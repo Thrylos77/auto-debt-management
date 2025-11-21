@@ -1,0 +1,79 @@
+{
+  "permissions": [
+    {"code": "user.list", "label": "List all users"},
+    {"code": "user.view", "label": "View a user"},
+    {"code": "user.create", "label": "Create a user"},
+    {"code": "user.update", "label": "Update a user"},
+    {"code": "user.delete", "label": "Delete a user"},
+    {"code": "user.change_own_password", "label": "Change own password"},
+    {"code": "user.change_password", "label": "Change password of any user"},
+    {"code": "user.request_otp", "label": "Request OTP for password reset"},
+    {"code": "user.reset_password", "label": "Reset password of any user"},
+    
+    {"code": "user_history.view", "label": "View history of a user"},
+    {"code": "user_history.list", "label": "List all user histories"},
+    {"code": "user_roles.view", "label": "View roles of a user"},
+    {"code": "user_roles.update", "label": "Update roles of a user"},
+
+
+    {"code": "permission.list", "label": "List all permissions"},
+    {"code": "permission.view", "label": "View a permission"},
+    {"code": "permission.update", "label": "Update a permission"},
+    {"code": "role.list", "label": "List all roles"},
+    {"code": "role.create", "label": "Create a role"},
+    {"code": "role.view", "label": "View a role"},
+    {"code": "role.update", "label": "Update a role"},
+    {"code": "role.delete", "label": "Delete a role"},
+    
+    {"code": "group.list", "label": "List all groups"},
+    {"code": "group.create", "label": "Create a group"},
+    {"code": "group.view", "label": "View a group"},
+    {"code": "group.update", "label": "Update a group"},
+    {"code": "group.delete", "label": "Delete a group"},
+
+
+    {"code": "role_history.view", "label": "View history of a role"},
+    {"code": "role_history.list", "label": "List all role histories"},
+    {"code": "permission_history.view", "label": "View history of a permission"},
+    {"code": "permission_history.list", "label": "List all permission histories"},
+    {"code": "group_history.view", "label": "View history of a group"},
+    {"code": "group_history.list", "label": "List all group histories"},
+
+
+    {"code": "rbac.assign_role", "label": "Assign a role to a user"},
+    {"code": "rbac.remove_role", "label": "Remove a role from a user"},
+    {"code": "rbac.add_user_group", "label": "Add a user to a group"},
+    {"code": "rbac.remove_user_group", "label": "Remove a user from a group"}
+  ],
+  "roles": [
+    {
+      "name": "ADMIN",
+      "description": "Grants all permissions in the system. For administrative use only.",
+      "permissions": "ALL"
+    },
+    {
+      "name": "COMMERCIAL",
+      "description": "Default role for a new user. Can view and edit their own profile.",
+      "permissions": [
+        "user.view", "user.update", "user.change_own_password", "user.request_otp",
+        "user.reset_password"
+      ]
+    },
+    {
+      "name": "CONSULTANT",
+      "description": "Can manage other users, including creating them and viewing the user list.",
+      "permissions": [
+        "user.list", "user.view", "user.update", "user.create", "rbac.add_user_group", 
+        "rbac.remove_user_group", "user.change_own_password", "user.request_otp", "user.reset_password"
+      ]
+    },
+    {
+      "name": "MODIFICATEUR",
+      "description": ". Can view and edit their own profile.",
+      "permissions": [
+        "user.view", "user.update", "user.change_own_password", "user.request_otp",
+        "user.reset_password"
+      ]
+    }
+  ]
+}
