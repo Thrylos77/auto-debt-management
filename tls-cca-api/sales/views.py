@@ -1,4 +1,4 @@
-
+# sales/views.py
 from rest_framework import viewsets, permissions, status, mixins
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -14,11 +14,12 @@ class CreditSaleViewSet(viewsets.ModelViewSet):
     """
     queryset = CreditSale.objects.all()
     resource = "creditsale"
+    serializer_class = CreditSaleSerializer
 
 class CreditSaleHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     """
     
     """
     queryset = CreditSale.history.all()
-    resource = "creditsalehistory"
+    resource = "creditsale_history"
     serializer_class = HistoricalCreditSaleSerializer

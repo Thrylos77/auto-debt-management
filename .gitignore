@@ -34,3 +34,8 @@ db.sqlite3-journal
 .poetry-cache/
 build/
 dist/
+
+# Migrations (optional)
+# If you don't want to keep generated ones
+**/migrations/
+!*/migrations/__init__.py

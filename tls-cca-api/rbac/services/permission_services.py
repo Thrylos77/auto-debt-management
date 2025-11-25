@@ -1,10 +1,12 @@
 # Generic DRF permissions
 from rest_framework.permissions import BasePermission
 from rest_framework.permissions import IsAuthenticated
-
 from django.db.models import Q
-from users.models import User
+from django.conf import settings
+
 from rbac.models import Permission
+from users.models import User
+
 
 class HasPermission(BasePermission):
     # Custom permission to check if the user has a specific permission code.

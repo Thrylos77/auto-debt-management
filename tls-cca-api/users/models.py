@@ -7,7 +7,6 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from core.utils.validators import phone_validator
-from rbac.services import permission_service
 
 class User(AbstractUser):
     # AbstractUser provides: id, username, first_name, last_name, email, password, etc.
@@ -29,7 +28,8 @@ class User(AbstractUser):
 
     @property
     def all_permissions(self):
-        return permission_service.get_user_permissions(self)
+        from rbac.services import permission_services
+        return permission_services.get_user_permissions(self)
     
     def has_permission(self, code: str) -> bool:
         return self.all_permissions.filter(code=code).exists()

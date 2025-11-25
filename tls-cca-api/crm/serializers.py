@@ -1,6 +1,6 @@
 # crm/serializers.py
 from rest_framework import serializers
-from .models import Customer, PhysicalPersonDetail, MoralPersonDetail, Portfolio, CrmHistory
+from .models import Customer, PhysicalPersonDetail, MoralPersonDetail, Portfolio
 from crm.services import customer_services as services
 from core.serializers.mixins import HistoricalChangesMixin
 

@@ -2,7 +2,7 @@
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
 
-class HistoricalChangesMixin:
+class HistoricalChangesMixin(serializers.Serializer):
     """
     A serializer mixin for models using simple-history.
     It adds fields for history metadata and a 'changes' field

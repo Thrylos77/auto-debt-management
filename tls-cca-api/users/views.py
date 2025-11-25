@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from rbac.services.permission_service import AutoPermissionMixin
+from rbac.services.permission_services import AutoPermissionMixin
 from .models import User
 from .serializers import *
 from .services import otp_services, user_services

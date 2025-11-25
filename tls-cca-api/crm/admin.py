@@ -46,6 +46,6 @@ class MoralPersonDetailAdmin(admin.ModelAdmin):
 
 @admin.register(Portfolio)
 class PortfolioAdmin(admin.ModelAdmin):
-    list_display = ('name', 'commercial', 'balance', 'active', 'created_at')
-    search_fields = ('name', 'commercial__username', 'commercial__first_name', 'commercial__last_name')
+    list_display = ('ref', 'commercial', 'balance', 'active', 'created_at')
+    search_fields = ('ref', 'commercial__username', 'commercial__first_name', 'commercial__last_name')
     readonly_fields = ('created_at',)

@@ -8,5 +8,5 @@ router.register(r'creditsales', CreditSaleViewSet, basename="creditsale")
 router.register(r'creditsale-histories', CreditSaleHistoryViewSet, basename="creditsale-histories")
 
 urlpatterns = [
-    router.urls
+    *router.urls
 ]

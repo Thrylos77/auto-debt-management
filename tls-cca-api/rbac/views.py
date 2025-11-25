@@ -3,8 +3,8 @@ from rest_framework.response import Response
 
 from .models import Group, Role, Permission
 from .serializers import *
-from .services.permission_service import AutoPermissionMixin
-from .services import role_service, group_service, assignment_service
+from .services.permission_services import AutoPermissionMixin
+from .services import assignment_services, group_services, role_services
 
 from drf_spectacular.utils import extend_schema_view, extend_schema
 
@@ -43,7 +43,7 @@ class RoleRetrieveUpdateDestroyView(AutoPermissionMixin, generics.RetrieveUpdate
 
     def perform_update(self, serializer):
         role = self.get_object()
-        role_service.update_role(role, **serializer.validated_data)
+        role_services.update_role(role, **serializer.validated_data)
 
 # ----- Groups CRUD -----
 @extend_schema(tags=["Groups"])
@@ -64,7 +64,7 @@ class GroupRetrieveUpdateDestroyView(AutoPermissionMixin, generics.RetrieveUpdat
 
     def perform_update(self, serializer):
         group = self.get_object()
-        group_service.update_group(group, **serializer.validated_data)
+        group_services.update_group(group, **serializer.validated_data)
 
 @extend_schema(tags=["Groups"])
 class GroupUsersListView(AutoPermissionMixin, generics.ListAPIView):
@@ -94,9 +94,9 @@ class BaseRoleAssignmentView(AutoPermissionMixin, generics.GenericAPIView):
         role_id = serializer.validated_data['role_id']
 
         if self.action_type == "assign":
-            return assignment_service.assign_role_to_user(user_id, role_id)
+            return assignment_services.assign_role_to_user(user_id, role_id)
         elif self.action_type == "remove":
-            return assignment_service.remove_role_from_user(user_id, role_id)
+            return assignment_services.remove_role_from_user(user_id, role_id)
 
         return Response({"detail": message}, status=status.HTTP_200_OK)
 
@@ -121,9 +121,9 @@ class BaseUserGroupView(AutoPermissionMixin, generics.GenericAPIView):
         group = self.get_object()
         users = serializer.validated_data['user_ids']
         if self.action_type == 'add':
-            return assignment_service.add_user_to_group(group.id, users)
+            return assignment_services.add_user_to_group(group.id, users)
         elif self.action_type == 'remove':
-            return assignment_service.remove_user_from_group(group.id, users)
+            return assignment_services.remove_user_from_group(group.id, users)
 
         status_code = 200 if added else 409
         action_word = "added" if self.action_type == 'add' else "removed"

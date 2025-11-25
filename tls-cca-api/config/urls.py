@@ -34,7 +34,6 @@ urlpatterns = [
     path('api/crm/', include('crm.urls')),
     path('api/sales/', include('sales.urls')),
     path('api/receivables/', include('receivables.urls')),
-    path('api/reporting', include('reporting.urls')),
     
     path('api/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/logout/', LogoutView.as_view(), name='logout'),

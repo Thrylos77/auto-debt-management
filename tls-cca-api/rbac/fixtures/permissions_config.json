@@ -9,42 +9,87 @@
     {"code": "user.change_password", "label": "Change password of any user"},
     {"code": "user.request_otp", "label": "Request OTP for password reset"},
     {"code": "user.reset_password", "label": "Reset password of any user"},
-    
     {"code": "user_history.view", "label": "View history of a user"},
     {"code": "user_history.list", "label": "List all user histories"},
     {"code": "user_roles.view", "label": "View roles of a user"},
     {"code": "user_roles.update", "label": "Update roles of a user"},
 
-
     {"code": "permission.list", "label": "List all permissions"},
     {"code": "permission.view", "label": "View a permission"},
     {"code": "permission.update", "label": "Update a permission"},
+    {"code": "permission_history.view", "label": "View history of a permission"},
+    {"code": "permission_history.list", "label": "List all permission histories"},
+
     {"code": "role.list", "label": "List all roles"},
     {"code": "role.create", "label": "Create a role"},
     {"code": "role.view", "label": "View a role"},
     {"code": "role.update", "label": "Update a role"},
     {"code": "role.delete", "label": "Delete a role"},
-    
+    {"code": "role_history.view", "label": "View history of a role"},
+    {"code": "role_history.list", "label": "List all role histories"},
+
     {"code": "group.list", "label": "List all groups"},
     {"code": "group.create", "label": "Create a group"},
     {"code": "group.view", "label": "View a group"},
     {"code": "group.update", "label": "Update a group"},
     {"code": "group.delete", "label": "Delete a group"},
-
-
-    {"code": "role_history.view", "label": "View history of a role"},
-    {"code": "role_history.list", "label": "List all role histories"},
-    {"code": "permission_history.view", "label": "View history of a permission"},
-    {"code": "permission_history.list", "label": "List all permission histories"},
     {"code": "group_history.view", "label": "View history of a group"},
     {"code": "group_history.list", "label": "List all group histories"},
-
 
     {"code": "rbac.assign_role", "label": "Assign a role to a user"},
     {"code": "rbac.remove_role", "label": "Remove a role from a user"},
     {"code": "rbac.add_user_group", "label": "Add a user to a group"},
-    {"code": "rbac.remove_user_group", "label": "Remove a user from a group"}
+    {"code": "rbac.remove_user_group", "label": "Remove a user from a group"},
+    
+    {"code": "customer.list", "label": "List all customers"},
+    {"code": "customer.view", "label": "View a customer"},
+    {"code": "customer.create", "label": "Create a customer"},
+    {"code": "customer.update", "label": "Update a customer"},
+    {"code": "customer.delete", "label": "Delete a customer"},
+    {"code": "customer_history.view", "label": "View history of a customer"},
+    {"code": "customer_history.list", "label": "List all customer histories"},
+
+    {"code": "portfolio.list", "label": "List all portfolios"},
+    {"code": "portfolio.view", "label": "View a portfolio"},
+    {"code": "portfolio.create", "label": "Create a portfolio"},
+    {"code": "portfolio.update", "label": "Update a portfolio"},
+    {"code": "portfolio.delete", "label": "Delete a portfolio"},
+    {"code": "portfolio_history.view", "label": "View history of a portfolio"},
+    {"code": "portfolio_history.list", "label": "List all portfolio histories"},
+
+    {"code": "creditsale.list", "label": "List all credit sales"},
+    {"code": "creditsale.view", "label": "View a credit sale"},
+    {"code": "creditsale.create", "label": "Create a credit sale"},
+    {"code": "creditsale.update", "label": "Update a credit sale"},
+    {"code": "creditsale.delete", "label": "Delete a credit sale"},
+    {"code": "creditsale_history.view", "label": "View history of a credit sale"},
+    {"code": "creditsale_history.list", "label": "List all credit sale histories"},
+
+    {"code": "debt.list", "label": "List all debts"},
+    {"code": "debt.view", "label": "View a debt"},
+    {"code": "debt.create", "label": "Create a debt"},
+    {"code": "debt.update", "label": "Update a debt"},
+    {"code": "debt.delete", "label": "Delete a debt"},
+    {"code": "debt_history.view", "label": "View history of a debt"},
+    {"code": "debt_history.list", "label": "List all debt histories"},
+
+    {"code": "term.list", "label": "List all terms"},
+    {"code": "term.view", "label": "View a term"},
+    {"code": "term.create", "label": "Create a term"},
+    {"code": "term.update", "label": "Update a term"},
+    {"code": "term.delete", "label": "Delete a term"},
+    {"code": "term_history.view", "label": "View history of a term"},
+    {"code": "term_history.list", "label": "List all term histories"},
+
+    {"code": "recovery.list", "label": "List all recoveries"},
+    {"code": "recovery.view", "label": "View a recovery"},
+    {"code": "recovery.create", "label": "Create a recovery"},
+    {"code": "recovery.update", "label": "Update a recovery"},
+    {"code": "recovery.delete", "label": "Delete a recovery"},
+    {"code": "recovery_history.view", "label": "View history of a recovery"},
+    {"code": "recovery_history.list", "label": "List all recovery histories"}
   ],
+
   "roles": [
     {
       "name": "ADMIN",
