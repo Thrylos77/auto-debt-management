@@ -2,6 +2,10 @@
 from rest_framework.permissions import BasePermission
 from rest_framework.permissions import IsAuthenticated
 
+from django.db.models import Q
+from users.models import User
+from rbac.models import Permission
+
 class HasPermission(BasePermission):
     # Custom permission to check if the user has a specific permission code.
     required_permissions = []
@@ -81,3 +85,12 @@ class AutoPermissionMixin:
         # 2 : Fallback to default permission classes
         return [cls() for cls in getattr(self, 'permission_classes', self.default_permission_classes)]
 
+def get_user_permissions(user: User):
+    """
+    Retrieves a distinct queryset of all permissions for a given user,
+    derived from their directly assigned roles and the roles of the groups
+    they belong to.
+    """
+    return Permission.objects.filter(
+        Q(roles__users=user) | Q(roles__groups__users=user)
+    ).distinct()

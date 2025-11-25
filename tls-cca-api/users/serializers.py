@@ -5,8 +5,9 @@
 import json
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User, PasswordResetOTP
+from .models import User
 from django.contrib.auth.password_validation import validate_password
+from .services import user_services
 from rbac.models import Group, Role
 from drf_spectacular.utils import extend_schema_field
 
@@ -17,7 +18,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'birthday', 'address', 'roles', 'groups')
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone', 'birthday', 'address', 'roles', 'groups')
 # Serializer for user registration
 class RegisterSerializer(serializers.ModelSerializer):
     roles = serializers.PrimaryKeyRelatedField(many=True, queryset=Role.objects.all(), required=False)
@@ -25,7 +26,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'birthday', 'address', 'email', 'roles', 'groups', 'password']
+        fields = ['id', 'username', 'first_name', 'last_name', 'birthday', 'address', 'email', 'phone',  'roles', 'groups', 'password']
         read_only_fields = ['id']
         extra_kwargs = {'password': {'write_only': True}}
 
@@ -35,51 +36,27 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
     
     def create(self, validated_data):
-        # Create a new user instance with the provided validated data.
-        # The M2M field 'roles' must be handled after the user is created.
-        roles = validated_data.pop('roles', [])
-        groups = validated_data.pop('groups', [])
-        user = User.objects.create_user(**validated_data)
-
-        # Now that the user is created, we can set the roles.
-        if not roles:  # If roles were provided in the request, set them.
-                try:
-                    roles = [Role.objects.get(name="USER")]
-                except Role.DoesNotExist:
-                    roles = []
-                    
-        user.groups.set(groups)
-        user.roles.set(roles)
-        
-        return user
+        return user_services.create_user(validated_data)
 
 
 # --- Password Change Serializers ---
-def validate_new_password_for_user(user, new_password):
-    if user.check_password(new_password):
-        raise serializers.ValidationError("The new password must be different from the old password.")
-    validate_password(new_password, user=user)
-
 class ChangeOwnPasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
 
-    def validate(self, attrs):
+    def validate_new_password(self, value):
         user = self.context['request'].user
-        old_password = attrs.get('old_password')
-        new_password = attrs.get('new_password')
-
-        if not user.check_password(old_password):
-            raise serializers.ValidationError({"old_password": "Incorrect old password."})
-        validate_new_password_for_user(user, new_password)
-
-        return attrs
+        # We call Django's validator here, but the main logic is in the service
+        validate_password(value, user=user)
+        return value
 
     def save(self, **kwargs):
         user = self.context['request'].user
-        user.set_password(self.validated_data['new_password'])
-        user.save()
-        return user
+        return user_services.change_user_password(
+            user=user,
+            old_password=self.validated_data['old_password'],
+            new_password=self.validated_data['new_password']
+        )
 
 
 class AdminChangePasswordSerializer(serializers.Serializer):
@@ -87,15 +64,13 @@ class AdminChangePasswordSerializer(serializers.Serializer):
 
     def validate_new_password(self, value):
         user = self.context['request'].user
-        validate_new_password_for_user(user, value)
+        validate_password(value, user=user)
         return value
     
     def save(self, **kwargs):
         user = self.context['request'].user
-        user.set_password(self.validated_data['new_password'])
-        user.save()
-        return user
-
+        # No old_password needed for admin change
+        return user_services.change_user_password(user=user, new_password=self.validated_data['new_password'])
 
 # -- Serializer for the OTP used in password reset --
 class RequestOTPSerializer(serializers.Serializer):
@@ -117,16 +92,10 @@ class ResetPasswordSerializer(serializers.Serializer):
     def validate(self, data):
         try:
             user = User.objects.get(email=data['email'])
+            self.context['user'] = user
+            # The core OTP validation logic is in the service
         except User.DoesNotExist:
             raise serializers.ValidationError({"email": "User not found."})
-        otp_qs = PasswordResetOTP.objects.filter(user=user, code=data['otp'], is_used=False)
-        if not otp_qs.exists():
-            raise serializers.ValidationError({"otp": "Invalid or used OTP."})
-        otp_obj = otp_qs.latest('created_at')
-        if not otp_obj.is_valid():
-            raise serializers.ValidationError({"otp": "OTP expired."})
-        self.context['user'] = user
-        self.context['otp_obj'] = otp_obj
         return data
 
 

@@ -12,16 +12,22 @@ class DebtViewSet(viewsets.ModelViewSet):
     """
 
     """
+    queryset = Debt.objects.all()
+    resource = "debt"
 
 class TermViewSet(viewsets.ModelViewSet):
     """
 
     """
+    queryset = Term.objects.all()
+    resource = "term"
 
 class RecoveryViewSet(viewsets.ModelViewSet):
     """
 
     """
+    queryset = Recovery.objects.all()
+    resource = "recovery"
 
 class ReceivablesHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     """

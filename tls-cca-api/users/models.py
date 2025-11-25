@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from core.utils.validators import phone_validator
+from rbac.services import permission_service
 
 class User(AbstractUser):
     # AbstractUser provides: id, username, first_name, last_name, email, password, etc.
@@ -28,18 +29,15 @@ class User(AbstractUser):
 
     @property
     def all_permissions(self):
-        from rbac.models import Permission
-        return Permission.objects.filter(
-            models.Q(roles__users=self) | models.Q(roles__groups__users=self)
-        ).distinct()
+        return permission_service.get_user_permissions(self)
     
     def has_permission(self, code: str) -> bool:
         return self.all_permissions.filter(code=code).exists()
     
     def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.first_name} {self.last_name} {self.username}"
 
-class PasswordResetOTP(models.Model):
+class OTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)

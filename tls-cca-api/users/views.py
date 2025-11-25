@@ -1,16 +1,13 @@
 from django.shortcuts import get_object_or_404
-from rest_framework.exceptions import ValidationError
-from datetime import timedelta
-from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from rbac.permission_control import AutoPermissionMixin
-from .models import User, PasswordResetOTP
+from rbac.services.permission_service import AutoPermissionMixin
+from .models import User
 from .serializers import *
+from .services import otp_services, user_services
 from rest_framework import status
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter
 from rest_framework_simplejwt.views import TokenObtainPairView as SimpleJWTTokenObtainPairView
-from .utils import generate_otp, send_otp_email
 
 # Custom TokenObtainPairView to log user login
 @extend_schema(tags=["Users"])
@@ -157,7 +154,7 @@ class AdminChangePasswordView(AutoPermissionMixin, generics.GenericAPIView):
 
     def put(self, request, *args, **kwargs):
         user = self.get_object()
-        serializer = self.get_serializer(data=request.data, context={'request': request})
+        serializer = self.get_serializer(data=request.data, context={'request': request, 'user': user})
         serializer.is_valid(raise_exception=True)
         serializer.save(instance=user)
         return Response({"detail": "Password changed successfully."}, status=status.HTTP_200_OK)
@@ -167,47 +164,27 @@ class AdminChangePasswordView(AutoPermissionMixin, generics.GenericAPIView):
 class RequestOTPView(generics.CreateAPIView):
     serializer_class = RequestOTPSerializer
     permission_classes = [permissions.AllowAny]
-    cooldown_seconds = 120  #
-    # Check if the user is on cooldown
-    def _can_request_new_otp(self, user):
-        last_otp = PasswordResetOTP.objects.filter(user=user).order_by('-created_at').first()
-        if not last_otp:
-            return True, 0  # No previous OTP, can request
 
-        next_allowed_time = last_otp.created_at + timedelta(seconds=self.cooldown_seconds)
-        if timezone.now() < next_allowed_time:
-            remaining = int((next_allowed_time - timezone.now()).total_seconds())
-            return False, remaining
-        return True, 0
-    
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         user = serializer.context['user']
-        can_request, remaining = self._can_request_new_otp(user)
-        if not can_request:
-            raise ValidationError(
-                {"detail": f"Please wait {remaining} seconds before requesting a new OTP."}
-            )
-        code = generate_otp()
-        PasswordResetOTP.objects.create(user=user, code=code)
-        send_otp_email(user.email, code)
+        otp_services.request_password_reset_otp(user)
+        return Response({"detail": "OTP has been sent to your email."}, status=status.HTTP_200_OK)
 
 @extend_schema(tags=["Users"])
 class ResetPasswordView(generics.CreateAPIView):
     serializer_class = ResetPasswordSerializer
     permission_classes = [permissions.AllowAny]
 
-    def perform_create(self, serializer):
-        user = serializer.context['user']
-        otp_obj = serializer.context['otp_obj']
-        new_password = serializer.validated_data['new_password']
-
-        user.set_password(new_password)
-        user.save()
-        otp_obj.is_used = True
-        otp_obj.save()
-
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+        
+        user = serializer.context['user']
+        otp_code = serializer.validated_data['otp']
+        new_password = serializer.validated_data['new_password']
+        
+        otp_services.reset_password_with_otp(user, otp_code, new_password)
+        
         return Response({"detail": "✔️ Password reset successfully."}, status=status.HTTP_200_OK)

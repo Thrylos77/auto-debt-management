@@ -4,11 +4,16 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from simple_history.models import HistoricalRecords
 
-from crm.models import Customer
+from crm.models import Customer, Portfolio
 
 class CreditSale(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name='sales')
     commercial = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='sales')
+    portfolio = models.ForeignKey(
+        Portfolio, on_delete=models.PROTECT, 
+        related_name='sales', null=True, blank=True,
+        help_text="Portfolio this sale belongs to. If not set, commercial's first portfolio is used."
+    )
     sale_date = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0,  validators=[MinValueValidator(0)])
     deposit = models.DecimalField(max_digits=12, decimal_places=2, default=0,  validators=[MinValueValidator(0)])

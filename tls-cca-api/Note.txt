@@ -5,4 +5,3 @@ Portefeuille créé automatiquement uniquement si necéssaire
 Assignation de portfeuille =>
   - Attribution d'un portfeuille existant ou
   - Transfert du portefeuille d'un commercial sortant
-

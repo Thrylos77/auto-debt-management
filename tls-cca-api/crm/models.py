@@ -105,15 +105,18 @@ class MoralPersonDetail(models.Model):
         return self.business_name or f"Moral details for {self.customer}"
 
 class Portfolio(models.Model):
-    name = models.CharField(max_length=150, unique=True)
+    ref = models.CharField(max_length=150, unique=True)
     commercial = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='portfolios', 
         null=True, blank=True, help_text='Portfolio commercial owner'
     )
     description = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
     balance = models.DecimalField(max_digits=14, decimal_places=2, default=0,  validators=[MinValueValidator(0)])
     active = models.BooleanField(default=True)
+
+    last_transfer_date = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
     history = HistoricalRecords()
 
     class Meta:

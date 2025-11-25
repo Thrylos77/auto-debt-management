@@ -1,8 +1,10 @@
 import json
 from rest_framework import serializers
 from .models import Group, Role, Permission
+from .services import role_service, group_service
 from drf_spectacular.utils import extend_schema_field
 from django.contrib.auth import get_user_model
+from core.serializers.mixins import HistoricalChangesMixin
 
 User = get_user_model()
 
@@ -35,6 +37,10 @@ class RoleSerializer(serializers.ModelSerializer):
         # 'permissions' is for output (read), 'permission_ids' is for input (write).
         fields = ('id', 'name', 'description', 'permissions', 'permission_ids')
 
+    def create(self, validated_data):
+        permissions = validated_data.pop('permissions', [])
+        return role_service.create_role(validated_data['name'], validated_data['description'], permissions)
+
 class RoleAssignmentSerializer(serializers.Serializer):
     # Serializer for the role assignment/removal endpoints.
     role_id = serializers.IntegerField(required=True, help_text="The ID of the role to assign or remove.")
@@ -54,6 +60,10 @@ class GroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = Group
         fields = ['id', 'name', 'description', 'roles', 'role_ids']
+
+    def create(self, validated_data):
+        roles = validated_data.pop('roles', [])
+        return group_service.create_group(validated_data['name'], validated_data['description'], roles)
 
 class UserGroupAssignmentSerializer(serializers.Serializer):
     users = serializers.StringRelatedField(many=True, read_only=True)
@@ -77,31 +87,7 @@ class UserMinimalSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 # ----- Historical Serializers -----
-
-class HistoricalChangesMixin:
-    def get_changes(self, obj):
-        """
-        Return the modified fields and their old/new values
-        for objects with a change type of '~' (modification).
-        """
-        if obj.history_type != '~':
-            return {}
-
-        delta = obj.diff_against(obj.prev_record)
-        changes = {}
-        for change in delta.changes:
-            changes[change.field] = {
-                "old": change.old,
-                "new": change.new
-            }
-        return changes
-
-
 class HistoricalPermissionSerializer(serializers.ModelSerializer, HistoricalChangesMixin):
-    history_user = serializers.StringRelatedField()
-    history_type_display = serializers.CharField(source='get_history_type_display', read_only=True)
-    changes = serializers.SerializerMethodField()
-
     class Meta:
         model = Permission.history.model
         fields = (
@@ -109,15 +95,8 @@ class HistoricalPermissionSerializer(serializers.ModelSerializer, HistoricalChan
             'changes', 'code', 'label', 'description'
         )
 
-    @extend_schema_field(serializers.ListField(child=serializers.DictField()))
-    def get_changes(self, obj):
-        return super().get_changes(obj)
-
 
 class HistoricalRoleSerializer(serializers.ModelSerializer, HistoricalChangesMixin):
-    history_user = serializers.StringRelatedField()
-    history_type_display = serializers.CharField(source='get_history_type_display', read_only=True)
-    changes = serializers.SerializerMethodField()
     permissions = serializers.SerializerMethodField()
 
     class Meta:
@@ -142,15 +121,8 @@ class HistoricalRoleSerializer(serializers.ModelSerializer, HistoricalChangesMix
         except (json.JSONDecodeError, TypeError):
             return []
 
-    @extend_schema_field(serializers.ListField(child=serializers.DictField()))
-    def get_changes(self, obj):
-        return super().get_changes(obj)
-
 
 class HistoricalGroupSerializer(serializers.ModelSerializer, HistoricalChangesMixin):
-    history_user = serializers.StringRelatedField()
-    history_type_display = serializers.CharField(source='get_history_type_display', read_only=True)
-    changes = serializers.SerializerMethodField()
     roles = serializers.SerializerMethodField()
 
     class Meta:
@@ -169,7 +141,3 @@ class HistoricalGroupSerializer(serializers.ModelSerializer, HistoricalChangesMi
             return data.get('roles', [])
         except (json.JSONDecodeError, TypeError):
             return []
-
-    @extend_schema_field(serializers.ListField(child=serializers.DictField()))
-    def get_changes(self, obj):
-        return super().get_changes(obj)

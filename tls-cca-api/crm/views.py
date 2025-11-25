@@ -1,4 +1,4 @@
-
+# crm/views.py
 from rest_framework import viewsets, permissions, status, mixins
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -8,27 +8,34 @@ from .serializers import *
 
 import os
 
-class PhysicalPersonViewSet(viewsets.ModelViewSet):
-    """
-
-    """
-
-class MoralPersonViewSet(viewsets.ModelViewSet):
-    """
-
-    """
-
 class CustomerViewSet(viewsets.ModelViewSet):
     """
 
     """
+    queryset = Customer.objects.all()
+    resource = "customer"
 
 class PortfolioViewSet(viewsets.ModelViewSet):
     """
     
     """
+    queryset = Portfolio.objects.all()
+    resource = "portfolio"
 
-class CrmHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+
+class CustomerHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     """
     
     """
+    queryset = Customer.history.all()
+    resource = "customerhistory"
+    serializer_class = HistoricalCustomerSerializer
+
+
+class PortfolioHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    
+    """
+    queryset = Portfolio.history.all()
+    resource = "portfoliohistory"
+    serializer_class = HistoricalPortfolioSerializer

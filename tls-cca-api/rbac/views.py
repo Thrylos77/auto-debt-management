@@ -1,11 +1,11 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
 
 from .models import Group, Role, Permission
 from .serializers import *
-from .permission_control import AutoPermissionMixin
-from django.contrib.auth import get_user_model
+from .services.permission_service import AutoPermissionMixin
+from .services import role_service, group_service, assignment_service
+
 from drf_spectacular.utils import extend_schema_view, extend_schema
 
 User = get_user_model()
@@ -36,10 +36,14 @@ class RoleListCreateView(AutoPermissionMixin, generics.ListCreateAPIView):
         return RoleListSerializer
 
 @extend_schema(tags=["Roles"])
-class RoleRetrieveUpdateDestroyView(AutoPermissionMixin, generics.RetrieveUpdateDestroyAPIView):
+class RoleRetrieveUpdateDestroyView(AutoPermissionMixin, generics.RetrieveUpdateDestroyAPIView):    
     queryset = Role.objects.prefetch_related('permissions').all()
     serializer_class = RoleSerializer
     resource = "role"
+
+    def perform_update(self, serializer):
+        role = self.get_object()
+        role_service.update_role(role, **serializer.validated_data)
 
 # ----- Groups CRUD -----
 @extend_schema(tags=["Groups"])
@@ -57,6 +61,10 @@ class GroupRetrieveUpdateDestroyView(AutoPermissionMixin, generics.RetrieveUpdat
     queryset = Group.objects.prefetch_related('roles').all()
     serializer_class = GroupSerializer
     resource = "group"
+
+    def perform_update(self, serializer):
+        group = self.get_object()
+        group_service.update_group(group, **serializer.validated_data)
 
 @extend_schema(tags=["Groups"])
 class GroupUsersListView(AutoPermissionMixin, generics.ListAPIView):
@@ -85,26 +93,10 @@ class BaseRoleAssignmentView(AutoPermissionMixin, generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         role_id = serializer.validated_data['role_id']
 
-        user = self.get_object()
-        role = get_object_or_404(Role, pk=role_id)
-
         if self.action_type == "assign":
-            if user.roles.filter(pk=role.pk).exists():
-                return Response(
-                    {"detail": "This user already has the specified role."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            user.roles.add(role)
-            message = f"Role '{role.name}' assigned to user '{user.username}'."
-
+            return assignment_service.assign_role_to_user(user_id, role_id)
         elif self.action_type == "remove":
-            if not user.roles.filter(pk=role.pk).exists():
-                return Response(
-                    {"detail": "This user does not have the specified role."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            user.roles.remove(role)
-            message = f"Role '{role.name}' removed from user '{user.username}'."
+            return assignment_service.remove_role_from_user(user_id, role_id)
 
         return Response({"detail": message}, status=status.HTTP_200_OK)
 
@@ -128,20 +120,10 @@ class BaseUserGroupView(AutoPermissionMixin, generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         group = self.get_object()
         users = serializer.validated_data['user_ids']
-
-        existing_ids = set(group.users.values_list('id', flat=True))
-        added, skipped = [], []
-
-        for user in users:
-            in_group = user.id in existing_ids
-            if self.action_type == 'add' and not in_group:
-                group.users.add(user)
-                added.append(user.username)
-            elif self.action_type == 'remove' and in_group:
-                group.users.remove(user)
-                added.append(user.username)
-            else:
-                skipped.append(user.username)
+        if self.action_type == 'add':
+            return assignment_service.add_user_to_group(group.id, users)
+        elif self.action_type == 'remove':
+            return assignment_service.remove_user_from_group(group.id, users)
 
         status_code = 200 if added else 409
         action_word = "added" if self.action_type == 'add' else "removed"

@@ -12,8 +12,13 @@ class CreditSaleViewSet(viewsets.ModelViewSet):
     """
 
     """
+    queryset = CreditSale.objects.all()
+    resource = "creditsale"
 
 class CreditSaleHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     """
     
     """
+    queryset = CreditSale.history.all()
+    resource = "creditsalehistory"
+    serializer_class = HistoricalCreditSaleSerializer
