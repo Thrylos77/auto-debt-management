@@ -4,8 +4,9 @@
     {"code": "user.view", "label": "View a user"},
     {"code": "user.create", "label": "Create a user"},
     {"code": "user.update", "label": "Update a user"},
-    {"code": "user.delete", "label": "Delete a user"},
+    {"code": "user.deactivate", "label": "Deactivate a user (soft delete)"},
     {"code": "user.change_own_password", "label": "Change own password"},
+    {"code": "user.reactivate", "label": "Reactivate a user"},
     {"code": "user.change_password", "label": "Change password of any user"},
     {"code": "user.request_otp", "label": "Request OTP for password reset"},
     {"code": "user.reset_password", "label": "Reset password of any user"},
@@ -41,11 +42,12 @@
     {"code": "rbac.add_user_group", "label": "Add a user to a group"},
     {"code": "rbac.remove_user_group", "label": "Remove a user from a group"},
     
-    {"code": "customer.list", "label": "List all customers"},
+    {"code": "customer.list", "label": "List customers"},
     {"code": "customer.view", "label": "View a customer"},
     {"code": "customer.create", "label": "Create a customer"},
     {"code": "customer.update", "label": "Update a customer"},
     {"code": "customer.delete", "label": "Delete a customer"},
+    {"code": "customer.list_all", "label": "View all customers from all commercials"},
     {"code": "customer_history.view", "label": "View history of a customer"},
     {"code": "customer_history.list", "label": "List all customer histories"},
 
@@ -101,7 +103,8 @@
       "description": "Default role for a new user. Can view and edit their own profile.",
       "permissions": [
         "user.view", "user.update", "user.change_own_password", "user.request_otp",
-        "user.reset_password"
+        "user.reset_password",
+        "customer.list", "customer.view", "customer.create", "customer.update"
       ]
     },
     {
@@ -109,7 +112,8 @@
       "description": "Can manage other users, including creating them and viewing the user list.",
       "permissions": [
         "user.list", "user.view", "user.update", "user.create", "rbac.add_user_group", 
-        "rbac.remove_user_group", "user.change_own_password", "user.request_otp", "user.reset_password"
+        "rbac.remove_user_group", "user.change_own_password", "user.request_otp", "user.reset_password",
+        "customer.list", "customer.view", "customer.list_all"
       ]
     },
     {
@@ -117,7 +121,8 @@
       "description": ". Can view and edit their own profile.",
       "permissions": [
         "user.view", "user.update", "user.change_own_password", "user.request_otp",
-        "user.reset_password"
+        "user.reset_password",
+        "customer.list", "customer.view", "customer.list_all"
       ]
     }
   ]

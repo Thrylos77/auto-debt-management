@@ -1,23 +1,39 @@
 """ Receivables Models """
-from django.db import models, transaction
-from django.db.models import F
+from datetime import date
+from django.db import models
 from django.conf import settings
 from simple_history.models import HistoricalRecords
 from django.core.validators import MinValueValidator
-from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 
+class DebtStatus(models.TextChoices):
+    ONGOING = 'ongoing', _('Ongoing')
+    PAID = 'paid', _('Paid')
+    LATE = 'late', _('Late')
+
+class TermStatus(models.TextChoices):
+    NOT_RECEIVED = 'not_received', _('Not Received')
+    RECEIVED = 'received', _('Received')
+    LATE = 'late', _('Late')
+
+class RecoveryPaymentMode(models.TextChoices):
+    CASH = 'cash', _('Cash')
+    CREDIT_CARD = 'credit_card', _('Credit Card')
+    BANK_TRANSFER = 'bank_transfer', _('Bank Transfer')
+    CHECK = 'check', _('Check')
+    OTHER = 'other', _('Other')
 
 # Créance
 class Debt(models.Model):
     sale = models.OneToOneField('sales.CreditSale', on_delete=models.CASCADE, related_name='debts')
     init_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0,  validators=[MinValueValidator(0)])
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0,  validators=[MinValueValidator(0)])
-    start_date = models.DateField(null=True)
+    start_date = models.DateField(null=True, default=date.today)
     close_date = models.DateField(null=True, blank=True)
     monthly_payment = models.DecimalField(max_digits=12, decimal_places=2, default=0,  validators=[MinValueValidator(0)])
     month_duration = models.PositiveIntegerField(default=1)
     regulation_mode = models.CharField(max_length=50)
-    status = models.CharField(max_length=30, default='ongoing')
+    debt_status = models.CharField(max_length=20, choices=DebtStatus.choices, default=DebtStatus.ONGOING)
     history = HistoricalRecords()
 
     class Meta:
@@ -35,7 +51,7 @@ class Term(models.Model):
     except_amount = models.DecimalField(max_digits=12, decimal_places=2)
     pay_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     payment_date = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=20, default='not_received')
+    term_status = models.CharField(max_length=20, choices=TermStatus.choices, default=TermStatus.NOT_RECEIVED)
     history = HistoricalRecords()
 
     class Meta:
@@ -53,7 +69,7 @@ class Recovery(models.Model):
     commercial = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     date = models.DateTimeField(auto_now_add=True)
-    payment_mode = models.CharField(max_length=50)
+    payment_mode = models.CharField(max_length=50, choices=RecoveryPaymentMode.choices, default=RecoveryPaymentMode.CASH)
     receipt = models.FileField(upload_to='receipts/', null=True, blank=True)
     history = HistoricalRecords()
 
@@ -64,14 +80,3 @@ class Recovery(models.Model):
 
     def __str__(self):
         return f"Recovery #{self.pk} - {self.amount} on {self.date}"
-    
-    def save(self, *args, **kwargs):
-        # validation simple
-        if self.amount <= 0:
-            raise ValidationError("Amount must be positive.")
-        with transaction.atomic():
-            super().save(*args, **kwargs)
-            # update term pay_amount
-            Term.objects.filter(pk=self.term_id).update(pay_amount=F('pay_amount') + self.amount)
-            # update debt balance (subtract amount)
-            Debt.objects.filter(pk=self.term.debt_id).update(balance=F('balance') - self.amount)

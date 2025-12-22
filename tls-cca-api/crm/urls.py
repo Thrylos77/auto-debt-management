@@ -10,5 +10,6 @@ router.register(r'customers-histories', CustomerHistoryViewSet, basename="custom
 router.register(r'portfolios-histories', PortfolioHistoryViewSet, basename="portfolio-histories")
 
 urlpatterns = [
-    *router.urls
+    *router.urls,
+    path('customers/bulk-deactivate/', CustomerBulkDeactivationView.as_view(), name='customer-bulk-deactivate'),
 ]

@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from core.serializers.mixins import HistoricalChangesMixin
 from .models import Debt, Term, Recovery
+from .services import recovery_services
 
 class TermSerializer(serializers.ModelSerializer):
     """
@@ -13,7 +14,7 @@ class TermSerializer(serializers.ModelSerializer):
         model = Term
         fields = [
             'id', 'term_date', 'except_amount', 'pay_amount', 
-            'payment_date', 'status'
+            'payment_date', 'term_status'
         ]
 
 
@@ -29,7 +30,7 @@ class DebtSerializer(serializers.ModelSerializer):
         model = Debt
         fields = [
             'id', 'sale', 'customer_display_name', 'init_amount', 'balance', 'start_date', 'close_date', 
-            'monthly_payment', 'month_duration', 'regulation_mode', 'status', 'terms'
+            'monthly_payment', 'month_duration', 'regulation_mode', 'debt_status', 'terms'
         ]
 
 
@@ -49,10 +50,12 @@ class RecoverySerializer(serializers.ModelSerializer):
         read_only_fields = ('date', 'commercial')
 
     def create(self, validated_data):
-        # Automatically set the commercial to the user making the request
-        validated_data['commercial'] = self.context['request'].user
-        # The model's save method will handle updating Term and Debt balances
-        return super().create(validated_data)
+        commercial = self.context['request'].user
+        # Delegate creation to the recovery service to handle business logic
+        return recovery_services.create_recovery(
+            commercial=commercial,
+            **validated_data
+        )
 
 """
 Historical Serializers
@@ -64,7 +67,7 @@ class HistoricalDebtSerializer(serializers.ModelSerializer, HistoricalChangesMix
             'history_id', 'history_date', 'history_type_display', 
             'history_user', 'changes', 'sale', 'init_amount', 
             'balance', 'start_date', 'close_date', 'monthly_payment', 
-            'month_duration', 'regulation_mode', 'status'
+            'month_duration', 'regulation_mode', 'debt_status'
         ]
 
 class HistoricalTermSerializer(serializers.ModelSerializer, HistoricalChangesMixin):
@@ -74,7 +77,7 @@ class HistoricalTermSerializer(serializers.ModelSerializer, HistoricalChangesMix
             'history_id', 'history_date', 'history_type_display', 
             'history_user', 'changes', 'debt', 'term_date', 
             'except_amount', 'pay_amount', 'payment_date', 
-            'status'
+            'term_status'
         ]
 
 class HistoricalRecoverySerializer(serializers.ModelSerializer, HistoricalChangesMixin):

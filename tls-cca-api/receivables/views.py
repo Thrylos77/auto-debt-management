@@ -1,14 +1,13 @@
 # receivables/views.py
-from rest_framework import viewsets, permissions, status, mixins
-from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework import viewsets
 from drf_spectacular.utils import extend_schema, OpenApiParameter
+
+from rbac.services.permission_services import AutoPermissionMixin
 from .models import *
 from .serializers import *
 
-import os
-
-class DebtViewSet(viewsets.ModelViewSet):
+@extend_schema(tags=["Debts"])
+class DebtViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
     """
 
     """
@@ -16,8 +15,8 @@ class DebtViewSet(viewsets.ModelViewSet):
     resource = "debt"
     serializer_class = DebtSerializer
 
-
-class TermViewSet(viewsets.ModelViewSet):
+@extend_schema(tags=["Terms"])
+class TermViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
     """
 
     """
@@ -25,7 +24,9 @@ class TermViewSet(viewsets.ModelViewSet):
     resource = "term"
     serializer_class = TermSerializer
 
-class RecoveryViewSet(viewsets.ModelViewSet):
+
+@extend_schema(tags=["Recoveries"])
+class RecoveryViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
     """
 
     """
@@ -33,7 +34,8 @@ class RecoveryViewSet(viewsets.ModelViewSet):
     resource = "recovery"
     serializer_class = RecoverySerializer
 
-class DebtHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+@extend_schema(tags=["Debts"])
+class DebtHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet):
     """
     
     """
@@ -41,7 +43,8 @@ class DebtHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     resource = "debt_history"
     serializer_class = HistoricalDebtSerializer
 
-class TermHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+@extend_schema(tags=["Terms"])
+class TermHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet):
     """
     
     """
@@ -49,7 +52,8 @@ class TermHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     resource = "term_history"
     serializer_class = HistoricalTermSerializer
 
-class RecoveryHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+@extend_schema(tags=["Recoveries"])
+class RecoveryHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet):
     """
     
     """

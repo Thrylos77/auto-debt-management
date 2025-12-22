@@ -42,4 +42,3 @@ def create_portfolio_for_commercial(commercial: UserType, description: str = Non
         description=description
     )
     return portfolio
-

@@ -1,14 +1,13 @@
 # sales/views.py
-from rest_framework import viewsets, permissions, status, mixins
-from rest_framework.response import Response
-from rest_framework.decorators import action
+from rest_framework import viewsets
 from drf_spectacular.utils import extend_schema, OpenApiParameter
+
+from rbac.services.permission_services import AutoPermissionMixin
 from .models import *
 from .serializers import *
 
-import os
-
-class CreditSaleViewSet(viewsets.ModelViewSet):
+@extend_schema(tags=["Credit-Sales"])
+class CreditSaleViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
     """
 
     """
@@ -16,7 +15,8 @@ class CreditSaleViewSet(viewsets.ModelViewSet):
     resource = "creditsale"
     serializer_class = CreditSaleSerializer
 
-class CreditSaleHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+@extend_schema(tags=["Credit-Sales"])
+class CreditSaleHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet):
     """
     
     """

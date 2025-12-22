@@ -15,6 +15,7 @@ class Command(BaseCommand):
         "SUPERUSER_PASSWORD",
         "SUPERUSER_FIRSTNAME",
         "SUPERUSER_LASTNAME",
+        "SUPERUSER_BIRTHDAY",
     ]
 
     def handle(self, *args, **kwargs):
@@ -36,6 +37,7 @@ class Command(BaseCommand):
                     password=env["SUPERUSER_PASSWORD"],
                     first_name=env["SUPERUSER_FIRSTNAME"],
                     last_name=env["SUPERUSER_LASTNAME"],
+                    birthdaty=env["SUPERUSER_BIRTHDAY"],
                 )
                 self.stdout.write('\n' + self.style.SUCCESS("✔️  Superuser created successfully."))
             except IntegrityError as e:

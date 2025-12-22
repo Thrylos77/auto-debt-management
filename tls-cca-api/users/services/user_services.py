@@ -40,3 +40,19 @@ def change_user_password(user, new_password, old_password=None):
     user.set_password(new_password)
     user.save()
     return user
+
+def desactivate_user(user):
+    """
+    Deactivates a user account.
+    """
+    user.is_active = False
+    user.save()
+    return user
+
+def reactivate_user(user):
+    """
+    Activates a user account.
+    """
+    user.is_active = True
+    user.save()
+    return user

@@ -1,13 +1,15 @@
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter
 from rest_framework import generics, permissions, status
+from rest_framework_simplejwt.views import TokenObtainPairView as SimpleJWTTokenObtainPairView
+from rest_framework.decorators import action
 from rest_framework.response import Response
+
 from rbac.services.permission_services import AutoPermissionMixin
 from .models import User
 from .serializers import *
 from .services import otp_services, user_services
-from rest_framework import status
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter
-from rest_framework_simplejwt.views import TokenObtainPairView as SimpleJWTTokenObtainPairView
+
 
 # Custom TokenObtainPairView to log user login
 @extend_schema(tags=["Users"])
@@ -78,13 +80,16 @@ class UserRetrieveUpdateDestroyView(AutoPermissionMixin, generics.RetrieveUpdate
     lookup_field = 'pk'
     resource = "user"
 
-    # Destroy method is overridden to perform a soft delete
-    # Instead of deleting the user, we deactivate them
     def destroy(self, request, *args, **kwargs):
         user = self.get_object()
-        user.is_active = False
-        user.save()
+        user_services.desactivate_user(user)
         return Response({'detail': 'User has been deactivated (soft delete).'}, status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'], url_path='reactivate')
+    def reactivate(self, request, pk=None):
+        user = self.get_object()
+        user_services.reactivate_user(user)
+        return Response({'detail': 'User has been reactivated.'}, status=status.HTTP_200_OK)
 
 
 

@@ -3,21 +3,28 @@ from django.db import models
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from simple_history.models import HistoricalRecords
+from django.utils.translation import gettext_lazy as _
 
 from crm.models import Customer, Portfolio
+
+class CreditSaleStatus(models.TextChoices):
+    PENDING_APPROVAL = 'pending_approval', _('Pending Approval')
+    APPROVED = 'approved', _('Approved')
+    REJECTED = 'rejected', _('Rejected')
+    CANCELLED = 'cancelled', _('Cancelled')
 
 class CreditSale(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name='sales')
     commercial = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='sales')
     portfolio = models.ForeignKey(
-        Portfolio, on_delete=models.PROTECT, 
+        Portfolio, on_delete=models.PROTECT,
         related_name='sales', null=True, blank=True,
         help_text="Portfolio this sale belongs to. If not set, commercial's first portfolio is used."
     )
     sale_date = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0,  validators=[MinValueValidator(0)])
     deposit = models.DecimalField(max_digits=12, decimal_places=2, default=0,  validators=[MinValueValidator(0)])
-    status = models.CharField(max_length=30, default='ongoing')
+    status = models.CharField(max_length=30, choices=CreditSaleStatus.choices, default=CreditSaleStatus.PENDING_APPROVAL)
     proof_doc = models.FileField(upload_to='docs/sales/', null=True, blank=True)
     history = HistoricalRecords()
 

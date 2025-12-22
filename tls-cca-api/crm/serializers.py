@@ -16,7 +16,7 @@ class PortfolioSerializer(serializers.ModelSerializer):
             'id', 'ref', 'commercial', 'commercial_name', 'description', 
             'balance', 'active', 'created_at', 'last_transfer_date'
         ]
-        read_only_fields = ('created_at', 'balance', 'commercial_name', 'last_transfer_date')
+        read_only_fields = ('ref', 'active', 'balance', 'created_at', 'commercial_name', 'last_transfer_date')
 
 
 class PhysicalPersonDetailSerializer(serializers.ModelSerializer):
@@ -53,9 +53,9 @@ class CustomerSerializer(serializers.ModelSerializer):
         model = Customer
         fields = [
             'id', 'display_name', 'customer_type', 'portfolio', 'email', 'phone', 
-            'mobile', 'address', 'created_at', 'physical_detail', 'moral_detail'
+            'mobile', 'address', 'is_active', 'created_at', 'physical_detail', 'moral_detail'
         ]
-        read_only_fields = ('created_at', 'portfolio')
+        read_only_fields = ('created_at', 'portfolio', 'display_name')
 
     def validate(self, data):
         customer_type = data.get('customer_type')
@@ -90,7 +90,7 @@ class HistoricalCustomerSerializer(serializers.ModelSerializer, HistoricalChange
         model = Customer.history.model
         fields = [
             'history_id', 'history_date', 'history_type_display', 'history_user', 'changes',
-            'customer_type', 'portfolio', 'email', 'phone'
+            'customer_type', 'portfolio', 'email', 'phone', 'is_active'
         ]
 
 class HistoricalPortfolioSerializer(serializers.ModelSerializer, HistoricalChangesMixin):

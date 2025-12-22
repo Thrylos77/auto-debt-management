@@ -15,7 +15,7 @@ class User(AbstractUser):
     email = models.EmailField(_('email address'), unique=True)
     phone = models.CharField(max_length=30, blank=True, validators=[phone_validator])
     address = models.TextField(blank=True)
-    birthday = models.DateField(blank=True)
+    birthday = models.DateField(blank=True, null=True)
     roles = models.ManyToManyField('rbac.Role', related_name='users', blank=True)
     groups = models.ManyToManyField('rbac.Group', related_name='users', blank=True)
 
@@ -24,7 +24,7 @@ class User(AbstractUser):
     # The default REQUIRED_FIELDS for AbstractUser is ['email'].
     # We are keeping it and adding first_name and last_name. The USERNAME_FIELD ('username')
     # and password are required by default for createsuperuser.
-    REQUIRED_FIELDS = ['first_name', 'last_name', 'email']
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'email', 'birthday']
 
     @property
     def all_permissions(self):

@@ -23,10 +23,11 @@ class Customer(models.Model):
         help_text="Portfolio this customer belongs to"
     )
     email = models.EmailField(blank=True)
-    phone = models.CharField(max_length=30, blank=True, validators=[phone_validator])
-    mobile = models.CharField(max_length=30, blank=True, null=True, validators=[phone_validator])
+    phone = models.CharField(max_length=30, validators=[phone_validator])
+    mobile = models.CharField(max_length=30, blank=True, validators=[phone_validator])
     address = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    is_active = models.BooleanField(default=True)
     history = HistoricalRecords()
 
     class Meta:
