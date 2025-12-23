@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema_view, extend_schema
 from rest_framework import generics, permissions, status
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework_simplejwt.views import TokenObtainPairView as SimpleJWTTokenObtainPairView
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -44,32 +45,16 @@ class UserDetailView(generics.RetrieveAPIView):
     def get_object(self):
         return self.request.user
 
-# This view allows admins to list all active users
-@extend_schema(
-    parameters=[
-        OpenApiParameter(
-            name='is_active',
-            type=bool,
-            location=OpenApiParameter.QUERY,
-            description='Filter users by active status (true/false)'
-        ),
-    ],
-    tags=["Users"]
-)
+# This view allows admins to list all users
+@extend_schema(tags=["Users"])
 class UserListView(AutoPermissionMixin, generics.ListAPIView):
     serializer_class = UserSerializer
     resource = "user"
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['roles', 'groups', 'is_active']
 
     def get_queryset(self):
-        is_active = self.request.query_params.get('is_active')
-        queryset = User.objects.all().order_by('id')
-        if is_active is not None:
-            # Convert the string 'true' or 'false' to a boolean
-            is_active_bool = is_active.lower() == 'true'
-            queryset = queryset.filter(is_active=is_active_bool)
-        else:
-            queryset = queryset.filter(is_active=True)  # Default, only active users are shown
-        return queryset
+        return user_services.get_accessible_users(self.request.user).order_by('id')
 
 
 # This view allows admins to retrieve, update, or delete a user by their ID

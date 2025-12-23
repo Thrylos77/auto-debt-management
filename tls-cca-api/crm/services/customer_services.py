@@ -2,7 +2,7 @@
 from django.db import transaction, models
 from django.utils import timezone
 from datetime import timedelta
-from django.db.models import Max, Q, Subquery, OuterRef
+from django.db.models import Subquery, OuterRef
 
 from ..models import Customer, PhysicalPersonDetail, MoralPersonDetail, Portfolio
 from sales.models import CreditSale

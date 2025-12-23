@@ -56,3 +56,14 @@ def reactivate_user(user):
     user.is_active = True
     user.save()
     return user
+
+def get_accessible_users(user):
+    """
+    Returns the queryset of users visible to the requesting user.
+    - Admins/Superusers (with user.create) see everyone.
+    - Others (with just user.list) see only Commercials.
+    """
+    if user.is_superuser or user.has_permission('user.create'):
+        return User.objects.all()
+    
+    return User.objects.filter(roles__name='COMMERCIAL')

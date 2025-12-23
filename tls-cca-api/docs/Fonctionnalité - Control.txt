@@ -1,7 +1,3 @@
-Portefeuille créé automatiquement uniquement si necéssaire
-  - Si un admin crée un commercial SANS assignation de portefeuille
-    => créer automatiquement un nouveau portefeuille
-
 Assignation de portfeuille =>
   - Attribution d'un portfeuille existant ou
   - Transfert du portefeuille d'un commercial sortant

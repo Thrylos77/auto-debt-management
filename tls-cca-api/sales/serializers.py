@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 from core.serializers.mixins import HistoricalChangesMixin
-from .models import CreditSale
+from .models import CreditSale, CreditSaleStatus
 
 
 class CreditSaleSerializer(serializers.ModelSerializer):
@@ -32,6 +32,10 @@ class CreditSaleSerializer(serializers.ModelSerializer):
         # Automatically set the commercial to the user making the request
         validated_data['commercial'] = self.context['request'].user
         return super().create(validated_data)
+
+class ChangeCreditSaleStatusSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=CreditSaleStatus.choices)
+
 
 class HistoricalCreditSaleSerializer(serializers.ModelSerializer, HistoricalChangesMixin):
     """
