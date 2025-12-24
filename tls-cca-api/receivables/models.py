@@ -7,14 +7,17 @@ from django.core.validators import MinValueValidator
 from django.utils.translation import gettext_lazy as _
 
 class DebtStatus(models.TextChoices):
+    NOT_STARTED = 'not_started', _('Not Started')
     ONGOING = 'ongoing', _('Ongoing')
+    OVERDUE = 'overdue', _('Overdue')   # 
     PAID = 'paid', _('Paid')
-    LATE = 'late', _('Late')
 
 class TermStatus(models.TextChoices):
-    NOT_RECEIVED = 'not_received', _('Not Received')
-    RECEIVED = 'received', _('Received')
-    LATE = 'late', _('Late')
+    UNPAID = 'unpaid', _('Unpaid')
+    PARTIALLY_PAID = 'partially_paid', _('Partially Paid')
+    PAID = 'paid', _('Paid')
+    PARTIALLY_OVERDUE = 'partially_overdue', _('Partially Overdue')
+    OVERDUE = 'overdue', _('Overdue')
 
 class RecoveryPaymentMode(models.TextChoices):
     CASH = 'cash', _('Cash')
@@ -51,7 +54,7 @@ class Term(models.Model):
     except_amount = models.DecimalField(max_digits=12, decimal_places=2)
     pay_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     payment_date = models.DateTimeField(null=True, blank=True)
-    term_status = models.CharField(max_length=20, choices=TermStatus.choices, default=TermStatus.NOT_RECEIVED)
+    term_status = models.CharField(max_length=20, choices=TermStatus.choices, default=TermStatus.UNPAID)
     history = HistoricalRecords()
 
     class Meta:
@@ -68,7 +71,7 @@ class Recovery(models.Model):
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='recoveries')
     commercial = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    date = models.DateTimeField(auto_now_add=True)
+    recovery_date = models.DateTimeField(auto_now_add=True)
     payment_mode = models.CharField(max_length=50, choices=RecoveryPaymentMode.choices, default=RecoveryPaymentMode.CASH)
     receipt = models.FileField(upload_to='receipts/', null=True, blank=True)
     history = HistoricalRecords()

@@ -17,6 +17,8 @@ class TermSerializer(serializers.ModelSerializer):
             'payment_date', 'term_status'
         ]
 
+        read_only_fields = ('term_date', 'except_amount')
+
 
 class DebtSerializer(serializers.ModelSerializer):
     """
@@ -33,6 +35,8 @@ class DebtSerializer(serializers.ModelSerializer):
             'monthly_payment', 'month_duration', 'regulation_mode', 'debt_status', 'terms'
         ]
 
+        read_only_fields = ('terms', 'sale', 'customer_display_name', 'init_amount', 'balance')
+
 
 class RecoverySerializer(serializers.ModelSerializer):
     """
@@ -45,9 +49,9 @@ class RecoverySerializer(serializers.ModelSerializer):
         model = Recovery
         fields = [
             'id', 'term', 'commercial', 'commercial_name', 'amount', 
-            'date', 'payment_mode', 'receipt'
+            'recovery_date', 'payment_mode', 'receipt'
         ]
-        read_only_fields = ('date', 'commercial')
+        read_only_fields = ('recovery_date', 'commercial', 'commercial_name')
 
     def create(self, validated_data):
         commercial = self.context['request'].user
@@ -86,5 +90,5 @@ class HistoricalRecoverySerializer(serializers.ModelSerializer, HistoricalChange
         fields = [
             'history_id', 'history_date', 'history_type_display', 
             'history_user', 'changes', 'term', 'commercial', 
-            'amount', 'date', 'payment_mode', 'receipt'
+            'amount', 'recovery_date', 'payment_mode', 'receipt'
         ]

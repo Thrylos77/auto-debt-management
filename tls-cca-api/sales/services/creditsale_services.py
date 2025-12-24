@@ -1,5 +1,6 @@
-from sales.models import CreditSaleStatus
-from receivables.models import Debt
+from django.db.models import Q
+from sales.models import CreditSale, CreditSaleStatus
+from receivables.models import Debt, DebtStatus
 
 def update_credit_sale_status(sale, new_status):
     """
@@ -14,9 +15,24 @@ def update_credit_sale_status(sale, new_status):
                 sale=sale,
                 init_amount=debt_amount,
                 balance=debt_amount,
+                status=DebtStatus.NOT_STARTED,
                 regulation_mode="UNDEFINED" # Placeholder, needs to be defined later
             )
 
     sale.status = new_status
     sale.save()
     return sale
+
+def get_sales_for_user(user):
+    """
+    Returns sales based on user role:
+    - Admin/Superuser: All sales
+    - Commercial: Sales where they are the commercial OR assigned via portfolio
+    """
+    if user.is_superuser or user.has_permission('creditsale.list_all'):
+        return CreditSale.objects.all()
+    
+    # For commercials: direct sales OR sales via their active portfolio
+    return CreditSale.objects.filter(
+        Q(commercial=user) | Q(portfolio__commercial=user)
+    ).distinct()

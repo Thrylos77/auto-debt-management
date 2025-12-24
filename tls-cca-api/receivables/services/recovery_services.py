@@ -46,11 +46,25 @@ def create_recovery(commercial, term, amount, payment_mode, receipt=None):
         # 6. Re-fetch the term to check its updated state
         updated_term = Term.objects.select_for_update().get(pk=term.id)
 
-        # 7. Update term status if fully paid
-        if updated_term.pay_amount >= updated_term.except_amount and updated_term.term_status != TermStatus.RECEIVED:
-            updated_term.term_status = TermStatus.RECEIVED
-            updated_term.payment_date = timezone.now()
-            updated_term.save(update_fields=['term_status', 'payment_date'])
+        # 7. Update term status
+        if updated_term.pay_amount >= updated_term.except_amount:
+            # Fully Paid
+            if updated_term.term_status != TermStatus.PAID:
+                updated_term.term_status = TermStatus.PAID
+                updated_term.payment_date = timezone.now()
+                updated_term.save(update_fields=['term_status', 'payment_date'])
+        elif updated_term.pay_amount > 0:
+            # Partially Paid
+            today = timezone.now().date()
+            new_status = TermStatus.PARTIALLY_PAID
+            
+            # If the term date has passed, it's partially overdue, not just partially paid
+            if updated_term.term_date and updated_term.term_date < today:
+                new_status = TermStatus.PARTIALLY_OVERDUE
+            
+            if updated_term.term_status != new_status:
+                updated_term.term_status = new_status
+                updated_term.save(update_fields=['term_status'])
 
         # 8. Update debt status if fully paid
         if debt.balance <= 0 and debt.debt_status != DebtStatus.PAID:
