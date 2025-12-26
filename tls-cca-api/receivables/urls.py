@@ -13,5 +13,6 @@ router.register(r'recoveries-histories', RecoveryHistoryViewSet, basename="recov
 
 
 urlpatterns = [
+    path('debts/update-status/', DebtStatusUpdateView.as_view(), name='debt-status-update'),
     *router.urls
 ]
