@@ -24,7 +24,7 @@ class User(AbstractUser):
     # The default REQUIRED_FIELDS for AbstractUser is ['email'].
     # We are keeping it and adding first_name and last_name. The USERNAME_FIELD ('username')
     # and password are required by default for createsuperuser.
-    REQUIRED_FIELDS = ['first_name', 'last_name', 'email', 'birthday']
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'email']
 
     @property
     def all_permissions(self):

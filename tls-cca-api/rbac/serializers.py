@@ -4,7 +4,7 @@ from .models import Group, Role, Permission
 from .services import group_services, role_services
 from drf_spectacular.utils import extend_schema_field
 from django.contrib.auth import get_user_model
-from core.serializers.mixins import HistoricalChangesMixin
+from core.mixins.serializers import HistoricalChangesMixin
 
 User = get_user_model()
 

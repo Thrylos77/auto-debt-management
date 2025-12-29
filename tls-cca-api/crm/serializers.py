@@ -2,7 +2,7 @@
 from rest_framework import serializers
 from .models import Customer, PhysicalPersonDetail, MoralPersonDetail, Portfolio
 from crm.services import customer_services as services
-from core.serializers.mixins import HistoricalChangesMixin
+from core.mixins.serializers import HistoricalChangesMixin
 
 class PortfolioSerializer(serializers.ModelSerializer):
     """

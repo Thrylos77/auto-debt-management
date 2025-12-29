@@ -8,7 +8,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 
 from rbac.services.permission_services import AutoPermissionMixin
-from core.mixins import StatsMixin
+from core.mixins.stats import StatsMixin
 from .models import *
 from .serializers import *
 from .filters import DebtFilter, TermFilter, RecoveryFilter

@@ -1,7 +1,7 @@
 # receivables/serializers.py
 from rest_framework import serializers
 
-from core.serializers.mixins import HistoricalChangesMixin
+from core.mixins.serializers import HistoricalChangesMixin
 from .models import Debt, Term, Recovery
 from .services import recovery_services
 

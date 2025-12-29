@@ -1,7 +1,7 @@
 # sales/serializers.py
 from rest_framework import serializers
 
-from core.serializers.mixins import HistoricalChangesMixin
+from core.mixins.serializers import HistoricalChangesMixin
 from .models import CreditSale, CreditSaleStatus
 
 
