@@ -63,14 +63,15 @@ class AdminChangePasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(required=True)
 
     def validate_new_password(self, value):
-        user = self.context['request'].user
+        user = self.context.get("target_user")
         validate_password(value, user=user)
         return value
     
-    def save(self, **kwargs):
-        user = self.context['request'].user
-        # No old_password needed for admin change
-        return user_services.change_user_password(user=user, new_password=self.validated_data['new_password'])
+    def update(self, instance, validated_data):
+        return user_services.change_user_password(
+            user=instance,
+            new_password=validated_data["new_password"]
+        )
 
 # -- Serializer for the OTP used in password reset --
 class RequestOTPSerializer(serializers.Serializer):

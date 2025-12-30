@@ -79,7 +79,7 @@ class Recovery(models.Model):
     class Meta:
         verbose_name = "Recovery"
         verbose_name_plural = "Recoveries"
-        ordering = ['-date']
+        ordering = ['-recovery_date']
 
     def __str__(self):
-        return f"Recovery #{self.pk} - {self.amount} on {self.date}"
+        return f"Recovery #{self.pk} - {self.amount} on {self.recovery_date}"

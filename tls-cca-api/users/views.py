@@ -144,7 +144,7 @@ class AdminChangePasswordView(AutoPermissionMixin, generics.GenericAPIView):
 
     def put(self, request, *args, **kwargs):
         user = self.get_object()
-        serializer = self.get_serializer(data=request.data, context={'request': request, 'user': user})
+        serializer = self.get_serializer(instance=user, data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save(instance=user)
         return Response({"detail": "Password changed successfully."}, status=status.HTTP_200_OK)

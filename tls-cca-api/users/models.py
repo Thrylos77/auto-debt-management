@@ -19,7 +19,10 @@ class User(AbstractUser):
     roles = models.ManyToManyField('rbac.Role', related_name='users', blank=True)
     groups = models.ManyToManyField('rbac.Group', related_name='users', blank=True)
 
-    history = HistoricalRecords(excluded_fields=['last_login'])
+    history = HistoricalRecords(
+        excluded_fields=['last_login'],
+        history_change_reason_field=models.TextField(null=True),
+    )
     
     # The default REQUIRED_FIELDS for AbstractUser is ['email'].
     # We are keeping it and adding first_name and last_name. The USERNAME_FIELD ('username')

@@ -34,8 +34,8 @@ class Command(BaseCommand):
             )
             if created:
                 self.stdout.write(self.style.SUCCESS(f"✔️  Permission '{perm.code}' created."))
-            else:
-                self.stdout.write(self.style.WARNING(f"⚠️  Permission '{perm.code}' already exists."))
+            #else:
+            #    self.stdout.write(self.style.WARNING(f"⚠️  Permission '{perm.code}' already exists."))
 
         # 2. Create/Update roles and assign permissions
         self.stdout.write("\n--- Seeding Roles and Assigning Permissions ---")
@@ -51,8 +51,8 @@ class Command(BaseCommand):
                     role.description = role_description
                     role.save(update_fields=['description'])
                     self.stdout.write(self.style.SUCCESS(f"✔️  Role '{role_name}' description updated."))
-                else:
-                    self.stdout.write(self.style.WARNING(f"⚠️  Role '{role_name}' already exists and is up-to-date."))
+                #else:
+                #    self.stdout.write(self.style.WARNING(f"⚠️  Role '{role_name}' already exists and is up-to-date."))
             except Role.DoesNotExist:
                 role = Role.objects.create(name=role_name, description=role_description)
                 self.stdout.write(self.style.SUCCESS(f"✔️  Role '{role_name}' created."))
@@ -78,8 +78,8 @@ class Command(BaseCommand):
                 if not su.roles.filter(pk=admin_role.pk).exists():
                     su.roles.add(admin_role)
                     self.stdout.write(self.style.SUCCESS(f"✔️  Superuser '{su.username}' assigned to role ADMIN."))
-                else:
-                    self.stdout.write(self.style.WARNING(f"⚠️  Superuser '{su.username}' already has role ADMIN."))
+                #else:
+                #    self.stdout.write(self.style.WARNING(f"⚠️  Superuser '{su.username}' already has role ADMIN."))
         except Role.DoesNotExist:
             self.stdout.write(self.style.ERROR("❌ Role 'ADMIN' not found in DB. Cannot assign to superusers."))
 

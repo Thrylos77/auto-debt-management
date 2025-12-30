@@ -7,13 +7,14 @@ class Permission(models.Model):
     Application-level permission (action/resource granularity).
     Example codes: "user.list", "user.create", "establishment.view_student"
     """
-    code = models.CharField(max_length=50, unique=True)   # used by the code
+    code = models.CharField(max_length=100, unique=True)   # used by the code
     label = models.CharField(max_length=255, unique=True)  # human-readable
     description = models.TextField(blank=True)
     history = HistoricalRecords(
         # This will store the user's ID without creating a foreign key constraint,
         # breaking the circular dependency between 'users' and 'rbac' apps.
         history_user_id_field=models.PositiveIntegerField(null=True, blank=True),
+        history_change_reason_field=models.TextField(null=True),
     )
 
     class Meta:
@@ -27,11 +28,12 @@ class Permission(models.Model):
 
 class Role(models.Model):
     # Role = grouping of permissions
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=50, unique=True)
     description = models.TextField(blank=True)
     permissions = models.ManyToManyField(Permission, related_name='roles', blank=True)
     history = HistoricalRecords(
         history_user_id_field=models.PositiveIntegerField(null=True, blank=True),
+        history_change_reason_field=models.TextField(null=True),
     )
     
     class Meta:
@@ -51,6 +53,7 @@ class Group(models.Model):
     roles = models.ManyToManyField('rbac.Role', related_name='groups', blank=True)
     history = HistoricalRecords(
         history_user_id_field=models.PositiveIntegerField(null=True, blank=True),
+        history_change_reason_field=models.TextField(null=True),
     )
 
     class Meta:

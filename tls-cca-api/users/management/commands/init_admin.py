@@ -37,11 +37,11 @@ class Command(BaseCommand):
                     password=env["SUPERUSER_PASSWORD"],
                     first_name=env["SUPERUSER_FIRSTNAME"],
                     last_name=env["SUPERUSER_LASTNAME"],
-                    birthdaty=env["SUPERUSER_BIRTHDAY"],
+                    birthday=env["SUPERUSER_BIRTHDAY"],
                 )
                 self.stdout.write('\n' + self.style.SUCCESS("✔️  Superuser created successfully."))
             except IntegrityError as e:
                 self.stdout.write('\n' + self.style.ERROR(f"❌ Error while creating superuser: {e}"))
-        else:
-            self.stdout.write('\n' + self.style.WARNING("⚠️  Admin Superuser already exists."))
+        #else:
+        #    self.stdout.write('\n' + self.style.WARNING("⚠️  Admin Superuser already exists."))
 

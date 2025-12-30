@@ -13,5 +13,5 @@ class TermAdmin(admin.ModelAdmin):
 
 @admin.register(Recovery)
 class RecoveryAdmin(admin.ModelAdmin):
-    list_display = ('id','term','commercial','amount','date','payment_mode')
+    list_display = ('id','term','commercial','amount','recovery_date','payment_mode')
     search_fields = ('commercial__username',)

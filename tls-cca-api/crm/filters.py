@@ -6,6 +6,16 @@ from .models import Customer
 
 User = get_user_model()
 
+def commercial_queryset(request):
+    return User.objects.filter(
+        is_active=True,
+    ).filter(
+        Q(user_permissions__codename='customer.create') |
+        Q(groups__group__permissions__codename='customer.create') |
+        Q(is_superuser=True)
+    ).distinct()
+
+
 class CustomerFilter(django_filters.FilterSet):
     """
     FilterSet for the Customer model.
@@ -13,16 +23,13 @@ class CustomerFilter(django_filters.FilterSet):
     Allows filtering by:
     - customer_type (exact match)
     - is_active (exact match)
-    - commercial (exact match on user ID)
+    - commercial (user responsible for the portfolio)
     """
-    portfolio__commercial = django_filters.ModelChoiceFilter(
-        queryset=User.objects.filter(
-            Q(groups__permissions__codename='customer.create') |
-            Q(user_permissions__codename='customer.create') |
-            Q(is_superuser=True)
-        ).distinct(),
-        field_name='portfolio__commercial',
-        label="Commercial"
+
+    commercial = django_filters.ModelChoiceFilter(
+        method="filter_commercial",
+        queryset=User.objects.all(),
+        label="Commercial",
     )
 
     class Meta:
@@ -31,3 +38,6 @@ class CustomerFilter(django_filters.FilterSet):
             'customer_type': ['exact'],
             'is_active': ['exact'],
         }
+
+    def filter_commercial(self, queryset, name, value):
+        return queryset.filter(portfolio__commercial=value)

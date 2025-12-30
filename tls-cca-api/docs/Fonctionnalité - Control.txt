@@ -1,19 +1,3 @@
 Assignation de portfeuille =>
   - Attribution d'un portfeuille existant ou
   - Transfert du portefeuille d'un commercial sortant
-
-
-Creance (Debt) : Dette globale
-  - Doit être créée immédiatement lorsque le statut de vente passe à : Approved
-  - Donc sera créée en même temps que la vente à crédit
-  puisqu'on suppose que la vente est approuvée à l'avance
-
-
-Echéance (Term) : Division de la Créance en tranche
-  - Chaque échance vient couvrir une tranche de la Dette
-  avec une date et un montant attendu
-
-Recouvrement (Recovery) : 
-  - Un paiement ou plusieurs peuvent être nécessaires pour solder une échéance
-
-
