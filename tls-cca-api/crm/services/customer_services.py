@@ -148,7 +148,7 @@ def get_customers_for_user(user) -> models.QuerySet[Customer]:
     # Superuser has all permissions implicitly.
     if user.is_authenticated:
         if user.is_superuser or user.has_permission('customer.list_all'):
-            return Customer.objects.all()
+            return Customer.objects.all().order_by('id')
         # Fallback for users without the 'list_all' permission (e.g., Commercials)
         return Customer.objects.filter(portfolio__commercial=user)
 

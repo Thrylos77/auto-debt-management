@@ -25,7 +25,7 @@ class CustomerViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
     - Data visibility is based on user role (Admin/Consultant vs. Commercial).
     - Includes actions to activate and deactivate customers.
     """
-    queryset = Customer.objects.all() # Base queryset, will be overridden by get_queryset
+    queryset = Customer.objects.all().order_by('id') # Base queryset, will be overridden by get_queryset
     resource = "customer"
     serializer_class = CustomerSerializer
     filter_backends = [DjangoFilterBackend]

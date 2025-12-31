@@ -6,7 +6,7 @@ from crm.models import Customer, PhysicalPersonDetail
 
 @pytest.fixture
 def api_client():
-    return APIClient()
+    return  APIClient()
 
 @pytest.mark.django_db
 class TestCustomerViews:
@@ -42,7 +42,7 @@ class TestCustomerViews:
         assert response.status_code == 201
         assert Customer.objects.filter(email='newcustomer@example.com').exists()
         assert PhysicalPersonDetail.objects.filter(customer__email='newcustomer@example.com').exists()
-
+ 
     def test_retrieve_customer(self, api_client, new_user, new_customer):
         """Test retrieving a specific customer."""
         url = reverse('customer-detail', kwargs={'pk': new_customer.pk})
