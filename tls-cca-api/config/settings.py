@@ -173,11 +173,23 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 25,
+    # Rate limiting: protects against brute-force and abuse
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',
+        'user': '1000/hour',
+        # Custom scopes used by core/utils/throttles.py
+        'otp': '3/hour',    # OTP endpoints: max 3 requests per hour
+        'login': '5/minute', # Login: max 5 attempts per minute per IP
+    },
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'User Management API',
-    'DESCRIPTION': 'API backend for RBAC-based user managment',
+    'TITLE': 'TLS CCA API',
+    'DESCRIPTION': 'API backend for CCA application',
     'VERSION': '1.0.0',
     "SERVE_INCLUDE_SCHEMA": False,
 }
@@ -191,6 +203,9 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
 }
+
+# Issuer label used in TOTP QR provisioning (Google Authenticator / 2FA)
+TOTP_ISSUER = os.getenv('TOTP_ISSUER', 'TLS CCA')
 
 # Email Configuration for Gmail
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
