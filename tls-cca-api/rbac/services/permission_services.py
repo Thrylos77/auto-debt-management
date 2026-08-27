@@ -2,7 +2,6 @@
 from rest_framework.permissions import BasePermission
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
-from django.conf import settings
 
 from rbac.models import Permission
 from users.models import User
@@ -40,13 +39,6 @@ DEFAULT_ACTION_MAP = {
     'DELETE': 'delete',
 }
 
-class PermissionCodeMixin:
-    permission_code_map = {}
-
-    def get_required_permission(self):
-        action = self.action
-        return self.get_permission_code_map().get(action)
-
 class AutoPermissionMixin:
     """
     Automatically maps DRF actions or HTTP methods to permissions.
@@ -54,7 +46,8 @@ class AutoPermissionMixin:
     """
     resource = None
     default_permission_classes = (IsAuthenticated,)
-    permission_code_map = {}  # Map of permission codes to their names in any app
+    # Override in views to map custom actions to specific permission suffixes
+    permission_code_map = {}  # e.g. {'POST': 'approve'}
 
     def get_permission_code_map(self):
         # Merge DEFAULT_ACTION_MAP with view-specific permission_code_map
@@ -68,7 +61,7 @@ class AutoPermissionMixin:
         if not self.resource:
             return [cls() for cls in getattr(self, 'permission_classes', self.default_permission_classes)]
 
-        # Determine the "action" key
+        # Determine the "action" key from DRF action, custom_action, or HTTP method
         action_key = (
             getattr(self, 'action', None) or 
             getattr(self, 'custom_action', None)   # custom action if defined

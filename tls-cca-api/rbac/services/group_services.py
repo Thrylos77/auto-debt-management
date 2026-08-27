@@ -11,3 +11,4 @@ def update_group(group, name=None, description=None, roles=None):
     if name: group.name = name
     if description: group.description = description
     if roles is not None: group.roles.set(roles)
+    group.save()

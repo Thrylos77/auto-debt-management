@@ -52,7 +52,20 @@ def add_user_to_group(group_id, user_ids):
     message = f"Users added: {added}" if added else f"No users added; skipped: {skipped}"
     return Response({"detail": message}, status=status_code)
 
+
+"""Removes users from a group."""
 def remove_user_from_group(group_id, user_ids):
-    """Removes users from a group."""
-    # Reuse the add_user_to_group function, but remove users instead
-    return add_user_to_group(group_id, user_ids)
+    group = get_object_or_404(Group, pk=group_id)
+    existing_ids = set(group.users.values_list('id', flat=True))
+    removed, skipped = [], []
+
+    for user in User.objects.filter(id__in=user_ids):
+        if user.id in existing_ids:
+            group.users.remove(user)
+            removed.append(user.username)
+        else:
+            skipped.append(user.username)
+
+    status_code = 200 if removed else 409
+    message = f"Users removed: {removed}" if removed else f"No users removed; skipped: {skipped}"
+    return Response({"detail": message}, status=status_code)
