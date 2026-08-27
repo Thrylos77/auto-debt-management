@@ -1,3 +1,5 @@
+""" sales/filters.py """
+
 from core.filters import BaseDateRangeFilter
 from .models import CreditSale
 

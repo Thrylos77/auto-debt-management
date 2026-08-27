@@ -1,4 +1,5 @@
-# receivables/serializers.py
+""" RECEIVABLES Serializers """
+
 from rest_framework import serializers
 
 from core.mixins.serializers import HistoricalChangesMixin
@@ -60,6 +61,16 @@ class RecoverySerializer(serializers.ModelSerializer):
             commercial=commercial,
             **validated_data
         )
+
+class DebtStatusUpdateSerializer(serializers.Serializer):
+    """
+    Serializer for validating input to the DebtStatusUpdateView.
+    """
+    confirm = serializers.BooleanField(
+        default=True,
+        help_text="Set to true to confirm the status update operation."
+    )
+
 
 """
 Historical Serializers

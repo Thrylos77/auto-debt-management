@@ -1,3 +1,5 @@
+""" receivables/filters.py """
+
 from core.filters import BaseDateRangeFilter
 from .models import Debt, Term, Recovery
 

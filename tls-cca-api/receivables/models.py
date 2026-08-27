@@ -43,6 +43,16 @@ class Debt(models.Model):
         verbose_name = "Debt"
         verbose_name_plural = "Debts"
         ordering = ['-start_date']
+        # Index for efficient filtering on debt status and date range queries
+        indexes = [
+            models.Index(fields=['debt_status', 'start_date']),
+        ]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        # Prevent data inconsistency: remaining balance cannot exceed the original debt
+        if self.balance > self.init_amount:
+            raise ValidationError({'balance': 'Balance cannot exceed the initial amount.'})
 
     def __str__(self):
         return f"Debt for sale #{self.sale.pk} ({self.balance}/{self.init_amount})"
@@ -61,6 +71,9 @@ class Term(models.Model):
         verbose_name = "Term"
         verbose_name_plural = "Terms"
         ordering = ['term_date']
+        indexes = [
+            models.Index(fields=['term_date', 'term_status']),
+        ]
 
     def __str__(self):
         return f"Term on {self.term_date} for debt #{self.debt.pk}"
@@ -80,6 +93,9 @@ class Recovery(models.Model):
         verbose_name = "Recovery"
         verbose_name_plural = "Recoveries"
         ordering = ['-recovery_date']
+        indexes = [
+            models.Index(fields=['recovery_date']),
+        ]
 
     def __str__(self):
         return f"Recovery #{self.pk} - {self.amount} on {self.recovery_date}"

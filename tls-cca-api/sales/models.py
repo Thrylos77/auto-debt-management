@@ -34,11 +34,11 @@ class CreditSale(models.Model):
         ordering = ['-sale_date']
 
     def save(self, *args, **kwargs):
-        # if no portfolio assigned, attempt to use first portfolio of commercial
+        # if no portfolio assigned, attempt to use first active portfolio of commercial
         if not self.portfolio and self.commercial:
             default_pf_qs = getattr(self.commercial, 'portfolios', None)
             if default_pf_qs:
-                first_pf = default_pf_qs.first()
+                first_pf = default_pf_qs.filter(active=True).first()
                 if first_pf:
                     self.portfolio = first_pf
         super().save(*args, **kwargs)

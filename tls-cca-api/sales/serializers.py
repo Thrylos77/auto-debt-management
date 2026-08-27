@@ -1,4 +1,5 @@
-# sales/serializers.py
+""" SALES Serializers"""
+
 from rest_framework import serializers
 
 from core.mixins.serializers import HistoricalChangesMixin

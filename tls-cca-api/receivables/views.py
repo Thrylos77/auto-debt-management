@@ -1,14 +1,11 @@
-# receivables/views.py
+""" receivables/views.py"""
+
 from rest_framework import viewsets, status, views
-from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Sum, Count
-from django.db.models.functions import Coalesce
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 
 from rbac.services.permission_services import AutoPermissionMixin
-from core.mixins.stats import StatsMixin
 from .models import *
 from .serializers import *
 from .filters import DebtFilter, TermFilter, RecoveryFilter
@@ -16,24 +13,16 @@ from .services import debt_services
 
 # Debts viewsets
 @extend_schema(tags=["Debts"])
-class DebtViewSet(AutoPermissionMixin, StatsMixin, viewsets.ModelViewSet):
+class DebtViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
     """
-
+    ViewSet for managing debts (créances).
+    Supports CRUD operations with filtering and permission-based access.
     """
     queryset = Debt.objects.all()
     resource = "debt"
     serializer_class = DebtSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = DebtFilter
-
-    stats_aggregates = {
-        'total_initial_amount': Coalesce(Sum('init_amount'), 0.0),
-        'total_balance': Coalesce(Sum('balance'), 0.0),
-        'count': Count('id')
-    }
-    timeline_date_field = 'start_date'
-    timeline_amount_field = 'init_amount'
-    timeline_amount_alias = 'total_amount'
 
 @extend_schema(tags=["Debts"])
 class DebtStatusUpdateView(AutoPermissionMixin, views.APIView):
@@ -48,14 +37,18 @@ class DebtStatusUpdateView(AutoPermissionMixin, views.APIView):
         return {'POST': f"{self.permission_suffix}"}
 
     def post(self, request, *args, **kwargs):
+        # Validate input before triggering the status update
+        serializer = DebtStatusUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         updated_count = debt_services.update_financial_statuses()
         return Response({'detail': f'Statuses updated. {updated_count} debts marked as overdue.'}, status=status.HTTP_200_OK)
 
 # Terms viewsets
 @extend_schema(tags=["Terms"])
-class TermViewSet(AutoPermissionMixin, StatsMixin, viewsets.ModelViewSet):
+class TermViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
     """
-
+    ViewSet for managing payment terms (échéances).
+    Supports CRUD operations with filtering and permission-based access.
     """
     queryset = Term.objects.all()
     resource = "term"
@@ -63,20 +56,12 @@ class TermViewSet(AutoPermissionMixin, StatsMixin, viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = TermFilter
 
-    stats_aggregates = {
-        'total_expected': Coalesce(Sum('except_amount'), 0.0),
-        'total_paid': Coalesce(Sum('pay_amount'), 0.0),
-        'count': Count('id')
-    }
-    timeline_date_field = 'term_date'
-    timeline_amount_field = 'except_amount'
-    timeline_amount_alias = 'total_expected'
-
 # Recoveries viewsets
 @extend_schema(tags=["Recoveries"])
-class RecoveryViewSet(AutoPermissionMixin, StatsMixin, viewsets.ModelViewSet):
+class RecoveryViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
     """
-
+    ViewSet for managing recoveries (recouvrements).
+    Supports CRUD operations with filtering and permission-based access.
     """
     queryset = Recovery.objects.all()
     resource = "recovery"
@@ -84,20 +69,12 @@ class RecoveryViewSet(AutoPermissionMixin, StatsMixin, viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = RecoveryFilter
 
-    stats_aggregates = {
-        'total_collected': Coalesce(Sum('amount'), 0.0),
-        'count': Count('id')
-    }
-    timeline_date_field = 'recovery_date'
-    timeline_amount_field = 'amount'
-    timeline_amount_alias = 'total_collected'
-
 
 """ Historical ViewSets """
 @extend_schema(tags=["Debts"])
 class DebtHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet):
     """
-    
+    Read-only ViewSet for viewing debt history (audit trail).
     """
     queryset = Debt.history.all()
     resource = "debt_history"
@@ -106,7 +83,7 @@ class DebtHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet):
 @extend_schema(tags=["Terms"])
 class TermHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet):
     """
-    
+    Read-only ViewSet for viewing term history (audit trail).
     """
     queryset = Term.history.all()
     resource = "term_history"
@@ -115,7 +92,7 @@ class TermHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet):
 @extend_schema(tags=["Recoveries"])
 class RecoveryHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet):
     """
-    
+    Read-only ViewSet for viewing recovery history (audit trail).
     """
     queryset = Recovery.history.all()
     resource = "recovery_history"

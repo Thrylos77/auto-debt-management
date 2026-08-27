@@ -15,7 +15,7 @@ def update_credit_sale_status(sale, new_status):
                 sale=sale,
                 init_amount=debt_amount,
                 balance=debt_amount,
-                status=DebtStatus.NOT_STARTED,
+                debt_status=DebtStatus.NOT_STARTED,
                 regulation_mode="UNDEFINED" # Placeholder, needs to be defined later
             )
 
