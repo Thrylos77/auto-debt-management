@@ -1,3 +1,5 @@
+""" users/signals.py """
+
 import json
 from django.dispatch import receiver
 from simple_history.signals import pre_create_historical_record

@@ -1,3 +1,5 @@
+""" users/views/views.py """
+
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema_view, extend_schema
 from rest_framework import generics, permissions, status
@@ -7,9 +9,15 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from rbac.services.permission_services import AutoPermissionMixin
-from .models import User
-from .serializers import *
-from .services import otp_services, user_services
+from core.utils.throttles import OTPRateThrottle, LoginRateThrottle
+from users.models import User
+from users.serializers import (
+    RegisterSerializer, UserSerializer, HistoricalUserSerializer,
+    ChangeOwnPasswordSerializer, AdminChangePasswordSerializer,
+    RequestOTPSerializer, ResetPasswordSerializer,
+    LogoutSerializer,
+)
+from users.services import otp_services, user_services
 
 
 # Custom TokenObtainPairView to log user login
@@ -20,6 +28,8 @@ class TokenObtainPairView(SimpleJWTTokenObtainPairView):
     token pair to prove the authentication of those credentials.
     """
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [LoginRateThrottle]
+    
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         
@@ -52,9 +62,10 @@ class UserListView(AutoPermissionMixin, generics.ListAPIView):
     resource = "user"
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['roles', 'groups', 'is_active']
+    ordering = ['id']
 
     def get_queryset(self):
-        return user_services.get_accessible_users(self.request.user).order_by('id')
+        return user_services.get_accessible_users(self.request.user)
 
 
 # This view allows admins to retrieve, update, or delete a user by their ID
@@ -67,15 +78,37 @@ class UserRetrieveUpdateDestroyView(AutoPermissionMixin, generics.RetrieveUpdate
 
     def destroy(self, request, *args, **kwargs):
         user = self.get_object()
-        user_services.desactivate_user(user)
+
+        # "Leaving commercial" scenario : optionally transfer the user's active
+        # portfolios to another commercial before deactivation.
+        transfer_to = None
+        transfer_to_id = request.data.get('transfer_to')
+        if transfer_to_id:
+            transfer_to = get_object_or_404(User, pk=transfer_to_id)
+
+        user_services.soft_delete_user(
+            user,
+            transfer_to=transfer_to,
+            reason=request.data.get('reason', ''),
+            transferred_by=request.user,
+        )
         return Response({'detail': 'User has been deactivated (soft delete).'}, status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=True, methods=['post'], url_path='reactivate')
-    def reactivate(self, request, pk=None):
+# This view allows admins to reactivate deactivated user
+@extend_schema(tags=["Users"])
+class ReactivateUserView(AutoPermissionMixin, generics.GenericAPIView):
+    queryset = User.objects.all()
+    resource = "user"
+    permission_code_map = {"POST": "reactivate"}
+
+    def post(self, request, *args, **kwargs):
         user = self.get_object()
         user_services.reactivate_user(user)
-        return Response({'detail': 'User has been reactivated.'}, status=status.HTTP_200_OK)
 
+        return Response(
+            {"detail": "User has been reactivated."},
+            status=status.HTTP_200_OK,
+        )
 
 
 # A view for logging user logout and blacklisting the refresh token
@@ -124,7 +157,10 @@ class ChangeOwnPasswordView(AutoPermissionMixin, generics.GenericAPIView):
     permission_code_map = { 'PUT': 'change_own_password' }
 
     def put(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data, context={'request': request})
+        serializer = self.get_serializer(
+            data=request.data, 
+            context={'request': request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save(instance=request.user)
         
@@ -144,7 +180,11 @@ class AdminChangePasswordView(AutoPermissionMixin, generics.GenericAPIView):
 
     def put(self, request, *args, **kwargs):
         user = self.get_object()
-        serializer = self.get_serializer(instance=user, data=request.data, context={'request': request})
+        serializer = self.get_serializer(
+            instance=user, 
+            data=request.data, 
+            context={'request': request, 'target_user': user}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save(instance=user)
         return Response({"detail": "Password changed successfully."}, status=status.HTTP_200_OK)
@@ -154,6 +194,7 @@ class AdminChangePasswordView(AutoPermissionMixin, generics.GenericAPIView):
 class RequestOTPView(generics.CreateAPIView):
     serializer_class = RequestOTPSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [OTPRateThrottle]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -166,6 +207,7 @@ class RequestOTPView(generics.CreateAPIView):
 class ResetPasswordView(generics.CreateAPIView):
     serializer_class = ResetPasswordSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [OTPRateThrottle]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

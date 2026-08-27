@@ -1,6 +1,9 @@
+""" users/utils.py """
+
 import re
 import logging
-import random
+import secrets
+import string
 from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
@@ -8,10 +11,12 @@ from django.utils.html import strip_tags
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 
-def generate_otp():
-    return f"{random.randint(100000, 999999)}"
-
 logger = logging.getLogger(__name__)
+
+def generate_otp(length=6):
+    digits = string.digits
+    return ''.join(secrets.choice(digits) for _ in range(length))
+
 def send_otp_email(email: str, otp: str):
     """
     Sends the OTP to the user's email address using an HTML template.
@@ -24,11 +29,17 @@ def send_otp_email(email: str, otp: str):
     recipient_list = [email]
     
     try:
-        send_mail(subject, plain_message, email_from, recipient_list, html_message=html_message, fail_silently=False)
+        send_mail(
+            subject, 
+            plain_message, 
+            email_from, 
+            recipient_list, 
+            html_message=html_message, 
+            fail_silently=False
+        )
         logger.info(f"Successfully sent OTP to {email}")
     except Exception as e:
         logger.error(f"Error sending OTP to {email}: {e}")
-
 
 class RegexPasswordValidator:
     """

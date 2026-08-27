@@ -1,14 +1,18 @@
+""" users/services/otp_services.py """
+
 from datetime import timedelta
 from django.utils import timezone
+from django.db import transaction
+from django.contrib.auth.hashers import make_password
 from rest_framework.exceptions import ValidationError
+from django.contrib.auth.password_validation import validate_password
+
 from users.models import User, OTP
 from users.utils import generate_otp, send_otp_email
-from django.contrib.auth.password_validation import validate_password
 
 COOLDOWN_SECONDS = 120
 
 def can_request_new_otp(user: User):
-    """Check if the user can request a new OTP based on a cooldown period."""
     last_otp = OTP.objects.filter(user=user).order_by('-created_at').first()
     if not last_otp:
         return True, 0
@@ -17,32 +21,57 @@ def can_request_new_otp(user: User):
     if timezone.now() < next_allowed_time:
         remaining = int((next_allowed_time - timezone.now()).total_seconds())
         return False, remaining
+
     return True, 0
 
+@transaction.atomic
 def request_password_reset_otp(user: User):
-    """Generate, save, and send a new password reset OTP for a user."""
     can_request, remaining = can_request_new_otp(user)
     if not can_request:
-        raise ValidationError(
-            {"detail": f"Please wait {remaining} seconds before requesting a new OTP."}
-        )
-    
-    code = generate_otp()
-    OTP.objects.create(user=user, code=code)
-    send_otp_email(user.email, code)
+        raise ValidationError({
+            "detail": f"Please wait {remaining} seconds before requesting a new OTP."
+        })
 
+    raw_code = generate_otp()
+
+    otp = OTP.objects.create(
+        user=user,
+        code_hash=make_password(raw_code),
+        expires_at=timezone.now() + timedelta(minutes=OTP.EXPIRATION_MINUTES),
+    )
+
+    try:
+        send_otp_email(user.email, raw_code)
+    except Exception:
+        otp.delete()
+        raise ValidationError({"detail": "Unable to send OTP."})
+
+    return otp
+
+@transaction.atomic
 def reset_password_with_otp(user: User, otp_code: str, new_password: str):
-    """Validate the OTP and reset the user's password."""
-    otp_qs = OTP.objects.filter(user=user, code=otp_code, is_used=False)
-    if not otp_qs.exists():
-        raise ValidationError({"otp": "Invalid or used OTP."})
-    
-    otp_obj = otp_qs.latest('created_at')
+    otp_obj = (
+        OTP.objects
+        .filter(user=user, is_used=False)
+        .order_by('-created_at')
+        .first()
+    )
+
+    if not otp_obj:
+        raise ValidationError({"otp": "Invalid OTP."})
+
     if not otp_obj.is_valid():
-        raise ValidationError({"otp": "OTP expired."})
+        raise ValidationError({"otp": "OTP expired or invalid."})
+
+    if not otp_obj.check_code(otp_code):
+        otp_obj.attempts += 1
+        otp_obj.save(update_fields=['attempts'])
+        raise ValidationError({"otp": "Invalid OTP."})
 
     validate_password(new_password, user=user)
+
     user.set_password(new_password)
-    user.save()
+    user.save(update_fields=['password'])
+
     otp_obj.is_used = True
-    otp_obj.save()
+    otp_obj.save(update_fields=['is_used'])

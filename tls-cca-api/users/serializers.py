@@ -1,3 +1,5 @@
+""" users/serializers.py """
+
 # This file is responsible for:
 # - Validating incoming data (e.g., from forms or API requests)
 # - Transforming Python/Django objects (models) to and from JSON
@@ -5,11 +7,12 @@
 import json
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User
 from django.contrib.auth.password_validation import validate_password
+from drf_spectacular.utils import extend_schema_field
+
+from .models import User
 from .services import user_services
 from rbac.models import Group, Role
-from drf_spectacular.utils import extend_schema_field
 
 # Show the User model without exposing the password field
 class UserSerializer(serializers.ModelSerializer):
@@ -81,7 +84,7 @@ class RequestOTPSerializer(serializers.Serializer):
         try:
             user = User.objects.get(email=value)
         except User.DoesNotExist:
-            raise serializers.ValidationError("⚠️ User not found.")
+            raise serializers.ValidationError("If the account exists, an OTP will be sent.")
         self.context['user'] = user
         return value
 
@@ -162,3 +165,25 @@ class HistoricalUserSerializer(serializers.ModelSerializer):
                     changes_list.append({'field': change.field, 'old': change.old, 'new': change.new})
             return changes_list
         return None
+
+
+# --- 2FA / TOTP Serializers ---
+class Enable2FASerializer(serializers.Serializer):
+    """Used for the first step: generating the secret and QR code."""
+    pass  # Pas de donnée en entrée, simple GET ou POST sans corps
+
+
+class VerifySetup2FASerializer(serializers.Serializer):
+    """Used to verify the first TOTP code and confirm 2FA activation."""
+    code = serializers.CharField(max_length=6, min_length=6)
+
+
+class Disable2FASerializer(serializers.Serializer):
+    """Used to disable 2FA, requires the user's password."""
+    password = serializers.CharField(required=True)
+
+
+class Login2FASerializer(serializers.Serializer):
+    """Second step of login: temp_token + TOTP code."""
+    temp_token = serializers.CharField(required=True)
+    code = serializers.CharField(max_length=6, min_length=6, required=True)

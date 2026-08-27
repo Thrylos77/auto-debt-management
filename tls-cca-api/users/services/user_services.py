@@ -1,3 +1,5 @@
+""" users/services/user_services.py """
+
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 
@@ -41,10 +43,24 @@ def change_user_password(user, new_password, old_password=None):
     user.save()
     return user
 
-def desactivate_user(user):
+def soft_delete_user(user, transfer_to=None, reason=None, transferred_by=None):
     """
-    Deactivates a user account.
+    Soft delete a user account (deactivation).
+
+    If `transfer_to` is an active commercial, all of `user`'s active portfolios
+    are automatically transferred to `transfer_to` BEFORE the account is
+    deactivated (the "leaving commercial" scenario).
     """
+    if transfer_to is not None:
+        # Imported inside to avoid a circular import at module load time.
+        from crm.services.portfolio_services import transfer_active_portfolios_of_commercial
+        transfer_active_portfolios_of_commercial(
+            from_commercial=user,
+            to_commercial=transfer_to,
+            transferred_by=transferred_by or user,
+            reason=reason or f"Leaving commercial '{user}' deactivated",
+        )
+
     user.is_active = False
     user.save()
     return user
