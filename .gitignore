@@ -22,6 +22,7 @@ Thumbs.db
 
 # --- Python / Django ---
 __pycache__/
+.pytest_cache/
 *.py[cod]
 *$py.class
 *.so
@@ -39,3 +40,8 @@ dist/
 # If you don't want to keep generated ones
 **/migrations/
 !*/migrations/__init__.py
+
+# Specifics files
+tls-cca-api/docs/Fonctionnalité-Control.txt
+docs/*.png
+docs/*.xlsx

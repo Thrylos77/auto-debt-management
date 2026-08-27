@@ -20,6 +20,11 @@ psycopg = "^3.3.2"
 pytest-django = "^4.11.1"
 faker = "^40.1.0"
 factory-boy = "^3.3.3"
+psycopg-binary = "^3.3.4"
+gunicorn = "^26.0.0"
+black = "^26.5.1"
+pyotp = "^2.10.0"
+qrcode = {extras = ["pil"], version = "^8.2"}
 
 
 [tool.pytest.ini_options]
