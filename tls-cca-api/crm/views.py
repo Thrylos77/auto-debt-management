@@ -1,4 +1,5 @@
-# crm/views.py
+""" crm/views.py """
+
 from rest_framework import viewsets, status, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -16,6 +17,8 @@ from .services.customer_services import (
     auto_deactivate_inactive_customers,
     get_customers_for_user,
 )
+from .services import portfolio_services
+from core.services import settings_services
 
 @extend_schema(tags=["Customers"])
 class CustomerViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
@@ -101,7 +104,8 @@ class CustomerBulkDeactivationView(AutoPermissionMixin, APIView):
     )
     def post(self, request, *args, **kwargs):
         """
-        Triggers the service to find and deactivate customers inactive for over 4 years.
+        Triggers the service to find and deactivate customers inactive for over
+        the configured inactivity period (default 4 years).
         """
         total_checked, deactivated_count = auto_deactivate_inactive_customers()
         
@@ -111,6 +115,53 @@ class CustomerBulkDeactivationView(AutoPermissionMixin, APIView):
             'detail': f'Checked {total_checked} active customers. Deactivated {deactivated_count} inactive customers.'
         }
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+@extend_schema(tags=["Customers"])
+class CustomerDeactivationPolicyView(AutoPermissionMixin, APIView):
+    """
+    Read/update the customer inactivity auto-deactivation policy.
+    Access restricted to Administrators only (`customer_deactivation.view/update`).
+
+    - `inactivity_months` (default **48** = 4 years): the exact inactivity
+      duration in months after which an inactive customer is deactivated.
+    """
+    resource = "customer_deactivation"
+    serializer_class = CustomerDeactivationPolicySerializer
+
+    @extend_schema(
+        summary="Get customer inactivity policy",
+        responses=CustomerDeactivationPolicySerializer,
+    )
+    def get(self, request, *args, **kwargs):
+        months = settings_services.get_customer_inactivity_months()
+        data = {
+            "inactivity_months": months,
+            "default_inactivity_months": settings_services.DEFAULT_CUSTOMER_INACTIVITY_MONTHS,
+            "threshold_date": settings_services.get_customer_inactivity_threshold().isoformat(),
+        }
+        return Response(data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Update customer inactivity policy (admin only)",
+        request=CustomerDeactivationPolicySerializer,
+        responses=CustomerDeactivationPolicySerializer,
+    )
+    def put(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        months = serializer.validated_data["inactivity_months"]
+
+        settings_services.set_customer_inactivity_months(months)
+
+        data = {
+            "inactivity_months": months,
+            "default_inactivity_months": settings_services.DEFAULT_CUSTOMER_INACTIVITY_MONTHS,
+            "threshold_date": settings_services.get_customer_inactivity_threshold().isoformat(),
+        }
+        return Response(data, status=status.HTTP_200_OK)
+
+    patch = put
 
 @extend_schema(tags=["Portfolios"])
 class PortfolioViewSet(
@@ -130,6 +181,63 @@ class PortfolioViewSet(
     queryset = Portfolio.objects.filter(active=True)
     resource = "portfolio"
     serializer_class = PortfolioSerializer
+    # The `assign` and `transfer` actions require dedicated permissions
+    # (portfolio.assign / portfolio.transfer) defined in the RBAC permissions config.
+    permission_code_map = {'assign': 'assign', 'transfer': 'transfer'}
+
+    @extend_schema(
+        summary="Assign an existing portfolio to a commercial",
+        description=(
+            "Assigns this portfolio to the given active commercial. Records a "
+            "PortfolioTransfer journal entry with the provided reason."
+        ),
+        request=PortfolioAssignSerializer,
+        responses=PortfolioSerializer,
+    )
+    @action(detail=True, methods=['post'], url_path='assign')
+    def assign(self, request, pk=None):
+        """
+        Assigns an existing portfolio to an active commercial.
+        Body: { "commercial": <id>, "reason": "optional" }
+        """
+        portfolio = self.get_object()
+        serializer = PortfolioAssignSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        portfolio_services.assign_portfolio(
+            portfolio,
+            to_commercial=serializer.validated_data['commercial'],
+            transferred_by=request.user,
+            reason=serializer.validated_data.get('reason') or None,
+        )
+        return Response(self.get_serializer(portfolio).data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Transfer a portfolio to another commercial",
+        description=(
+            "Transfers this portfolio to the given active commercial "
+            "(e.g. when its current owner is leaving). Records a journal entry."
+        ),
+        request=PortfolioTransferInputSerializer,
+        responses=PortfolioSerializer,
+    )
+    @action(detail=True, methods=['post'], url_path='transfer')
+    def transfer(self, request, pk=None):
+        """
+        Transfers this portfolio to an active commercial (leaving commercial scenario).
+        Body: { "to_commercial": <id>, "reason": "optional" }
+        """
+        portfolio = self.get_object()
+        serializer = PortfolioTransferInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        portfolio_services.transfer_portfolio(
+            portfolio,
+            to_commercial=serializer.validated_data['to_commercial'],
+            transferred_by=request.user,
+            reason=serializer.validated_data.get('reason') or None,
+        )
+        return Response(self.get_serializer(portfolio).data, status=status.HTTP_200_OK)
 
 @extend_schema(tags=["Customers"])
 class CustomerHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet):
@@ -148,3 +256,17 @@ class PortfolioHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet
     queryset = Portfolio.history.all()
     resource = "portfolio_history"
     serializer_class = HistoricalPortfolioSerializer
+
+@extend_schema(tags=["Portfolios"])
+class PortfolioTransferViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet):
+    """
+    Read-only view of the PortfolioTransfer journal (assignment/transfer audit trail).
+    Filterable by `portfolio`, `from_commercial` and `to_commercial`.
+    """
+    queryset = PortfolioTransfer.objects.all().select_related(
+        'portfolio', 'from_commercial', 'to_commercial', 'transferred_by'
+    )
+    resource = "portfolio_transfer"
+    serializer_class = PortfolioTransferSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['portfolio', 'from_commercial', 'to_commercial']

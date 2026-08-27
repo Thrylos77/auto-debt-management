@@ -1,8 +1,12 @@
 """crm/tests/test_views.py"""
 import pytest
 from django.urls import reverse
+from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
-from crm.models import Customer, PhysicalPersonDetail
+from crm.models import Customer, PhysicalPersonDetail, PortfolioTransfer
+from crm.services.portfolio_services import create_portfolio_for_commercial
+
+User = get_user_model()
 
 @pytest.fixture
 def api_client():
@@ -50,3 +54,62 @@ class TestCustomerViews:
         response = api_client.get(url)
         assert response.status_code == 200
         assert response.data['email'] == new_customer.email
+
+
+@pytest.mark.django_db
+class TestPortfolioViews:
+    @pytest.fixture
+    def owner(self):
+        return User.objects.create_user(
+            username='owner', email='owner@example.com', password='x', is_active=True
+        )
+
+    @pytest.fixture
+    def target(self):
+        return User.objects.create_user(
+            username='target', email='target@example.com', password='x', is_active=True
+        )
+
+    @pytest.fixture
+    def portfolio(self, owner):
+        return create_portfolio_for_commercial(owner)
+
+    def test_assign_existing_portfolio(self, api_client, new_user, portfolio, target):
+        api_client.force_authenticate(user=new_user)
+        url = reverse('portfolio-assign', kwargs={'pk': portfolio.pk})
+        response = api_client.post(url, {'commercial': target.id, 'reason': 'Reaffectation'}, format='json')
+        assert response.status_code == 200
+        assert response.data['commercial'] == target.id
+        portfolio.refresh_from_db()
+        assert portfolio.commercial_id == target.id
+        assert PortfolioTransfer.objects.filter(
+            portfolio=portfolio, to_commercial=target, reason='Reaffectation'
+        ).exists()
+
+    def test_assign_rejects_inactive_target(self, api_client, new_user, portfolio, target):
+        target.is_active = False
+        target.save()
+        api_client.force_authenticate(user=new_user)
+        url = reverse('portfolio-assign', kwargs={'pk': portfolio.pk})
+        response = api_client.post(url, {'commercial': target.id}, format='json')
+        assert response.status_code == 400
+
+    def test_transfer_portfolio(self, api_client, new_user, portfolio, target):
+        api_client.force_authenticate(user=new_user)
+        url = reverse('portfolio-transfer', kwargs={'pk': portfolio.pk})
+        response = api_client.post(url, {'to_commercial': target.id, 'reason': 'Depart'}, format='json')
+        assert response.status_code == 200
+        assert response.data['commercial'] == target.id
+        assert PortfolioTransfer.objects.filter(
+            portfolio=portfolio, to_commercial=target, reason='Depart'
+        ).exists()
+
+    def test_list_portfolio_transfers(self, api_client, new_user, portfolio, target):
+        from crm.services.portfolio_services import assign_portfolio
+        assign_portfolio(portfolio, target, transferred_by=new_user, reason='log')
+        api_client.force_authenticate(user=new_user)
+        url = reverse('portfolio-transfer-list')
+        response = api_client.get(url)
+        assert response.status_code == 200
+        assert PortfolioTransfer.objects.count() >= 1
+        assert any(t['portfolio'] == portfolio.id for t in response.data['results'])

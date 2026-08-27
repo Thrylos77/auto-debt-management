@@ -1,12 +1,12 @@
 # crm/services/customer_services.py
 from django.db import transaction, models
 from django.utils import timezone
-from datetime import timedelta
 from django.db.models import Subquery, OuterRef
 
 from ..models import Customer, PhysicalPersonDetail, MoralPersonDetail, Portfolio
 from sales.models import CreditSale
 from receivables.models import Debt
+from core.services import settings_services
 
 
 def create_customer(validated_data: dict, creator=None) -> Customer:
@@ -78,16 +78,20 @@ def deactivate_customer(customer: Customer) -> Customer:
 
 def auto_deactivate_inactive_customers() -> tuple[int, int]:
     """
-    Deactivates customers who have been inactive for more than 4 years.
+    Deactivates customers who have been inactive for longer than the configured
+    inactivity period (in months).
 
-    An active customer is one who:
-    - Has had a credit sale within the last 4 years.
-    - Or has a debt that was closed within the last 4 years.
-    - Or was created within the last 4 years.
+    The inactivity period is an admin-configurable system setting
+    (`customer_inactivity_duration_months`, default **48 months / 4 years**).
+
+    A "last activity date" is the most recent of:
+    - the last credit sale,
+    - the last (closed) debt,
+    - the customer creation date.
 
     Returns a tuple of (number of customers checked, number of customers deactivated).
     """
-    four_years_ago = timezone.now() - timedelta(days=4*365)
+    inactivity_threshold = settings_services.get_customer_inactivity_threshold()
 
     # Subquery to find the last sale date for a customer
     last_sale_date = CreditSale.objects.filter(
@@ -125,12 +129,13 @@ def auto_deactivate_inactive_customers() -> tuple[int, int]:
         if customer.last_debt_close:
             # Convert date to datetime to compare with other activity dates
             debt_close_datetime = timezone.make_aware(
-                timezone.datetime.combine(customer.last_debt_close, timezone.datetime.min.time())
+                timezone.datetime.combine(customer.last_debt_close, timezone.datetime.min.time()),
+                timezone.utc
             )
             last_activity_date = max(last_activity_date, debt_close_datetime)
 
-        # If the last activity was more than 4 years ago, deactivate
-        if last_activity_date < four_years_ago:
+        # If the last activity predates the configured threshold, deactivate
+        if last_activity_date < inactivity_threshold:
             customers_to_deactivate_pks.append(customer.pk)
 
     if customers_to_deactivate_pks:

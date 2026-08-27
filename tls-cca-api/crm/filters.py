@@ -1,4 +1,5 @@
-# crm/filters.py
+""" crm/filters.py """
+
 import django_filters
 from django.contrib.auth import get_user_model
 from django.db.models import Q

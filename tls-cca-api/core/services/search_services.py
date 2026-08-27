@@ -5,7 +5,7 @@ from crm.models import Customer
 
 def search_global(user, query):
     """
-    Performs a federated search across multiple models (Sales, Debts).
+    Performs a federated search across multiple models (Sales, Debts, Customers).
     Respects the user's scope (RBAC).
     """
     results = {
@@ -18,7 +18,6 @@ def search_global(user, query):
         return results
 
     # --- 1. Search Scope Definition ---
-    # We reuse the logic from stats_services to ensure consistency
     has_global_view = user.is_superuser or user.has_permission('dashboard.view_all_stats')
 
     # --- 2. Search in Credit Sales ---
@@ -29,17 +28,18 @@ def search_global(user, query):
             Q(commercial=user) | Q(portfolio__commercial=user)
         ).distinct()
 
-    # Filter by query (Code, or linked Customer Name)
-    # Adaptez 'code' et 'customer__name' selon vos vrais noms de champs
+    # Filter by query on customer display name components
     sales_hits = sales_qs.filter(
-        Q(code__icontains=query) 
-        # | Q(customer__name__icontains=query) 
-    ).select_related('commercial')[:5] # Limit to 5 results for performance
+        Q(customer__physical_detail__first_name__icontains=query) |
+        Q(customer__physical_detail__last_name__icontains=query) |
+        Q(customer__moral_detail__business_name__icontains=query) |
+        Q(customer__email__icontains=query)
+    ).select_related('customer', 'customer__physical_detail', 'customer__moral_detail', 'commercial')[:5]
 
     results["sales"] = [
         {
             "id": sale.id,
-            "title": f"Vente {sale.code}",
+            "title": f"Vente #{sale.id} - {sale.customer.display_name}",
             "subtitle": f"Montant: {sale.total_amount}",
             "type": "sale",
             "url": f"/sales/creditsales/{sale.id}/"
@@ -51,19 +51,20 @@ def search_global(user, query):
     if has_global_view:
         debts_qs = Debt.objects.all()
     else:
-        # Debts linked to visible sales
         debts_qs = Debt.objects.filter(sale__in=sales_qs)
 
-    # Filter by query (Code, Reference)
+    # Filter by query on customer display name components
     debts_hits = debts_qs.filter(
-        Q(sale__code__icontains=query)
-        # | Q(sale__customer__name__icontains=query)
-    )[:5]
+        Q(sale__customer__physical_detail__first_name__icontains=query) |
+        Q(sale__customer__physical_detail__last_name__icontains=query) |
+        Q(sale__customer__moral_detail__business_name__icontains=query) |
+        Q(sale__customer__email__icontains=query)
+    ).select_related('sale', 'sale__customer', 'sale__customer__physical_detail', 'sale__customer__moral_detail')[:5]
 
     results["debts"] = [
         {
             "id": debt.id,
-            "title": f"Dette {debt.code}",
+            "title": f"Dette #{debt.id} - {debt.sale.customer.display_name}",
             "subtitle": f"Reste: {debt.balance}",
             "type": "debt",
             "status": debt.debt_status,
@@ -73,26 +74,27 @@ def search_global(user, query):
     ]
 
     # --- 4. Search in Customers ---
-    # RBAC: Admin/Consultant sees all, Commercial sees own
     if user.is_superuser or user.has_permission('customer.list_all'):
         customers_qs = Customer.objects.all()
     elif user.has_permission('customer.list'):
-        customers_qs = Customer.objects.filter(commercial=user)
+        # Customer has a portfolio, which has a commercial.
+        customers_qs = Customer.objects.filter(portfolio__commercial=user)
     else:
         customers_qs = Customer.objects.none()
 
-    # Filter by query (Name, Email)
+    # Filter by query
     customer_hits = customers_qs.filter(
-        Q(first_name__icontains=query) | 
-        Q(last_name__icontains=query) |
+        Q(physical_detail__first_name__icontains=query) | 
+        Q(physical_detail__last_name__icontains=query) |
+        Q(moral_detail__business_name__icontains=query) |
         Q(email__icontains=query)
-    )[:5]
+    ).select_related('physical_detail', 'moral_detail')[:5]
 
     results["customers"] = [
         {
             "id": customer.id,
-            "title": f"{customer.first_name} {customer.last_name}",
-            "subtitle": customer.email,
+            "title": customer.display_name,
+            "subtitle": customer.email or customer.phone,
             "type": "customer",
             "url": f"/crm/customers/{customer.id}/"
         }

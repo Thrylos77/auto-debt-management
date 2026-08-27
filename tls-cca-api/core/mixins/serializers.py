@@ -1,4 +1,5 @@
-# core/mixins/serializers_mixins.py
+""" core/mixins/serializers_mixins.py """
+
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
 

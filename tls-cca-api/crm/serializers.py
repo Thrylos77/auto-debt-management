@@ -1,8 +1,12 @@
-# crm/serializers.py
+""" CRM Serializers """
+
 from rest_framework import serializers
-from .models import Customer, PhysicalPersonDetail, MoralPersonDetail, Portfolio
+from django.contrib.auth import get_user_model
+from .models import Customer, PhysicalPersonDetail, MoralPersonDetail, Portfolio, PortfolioTransfer
 from crm.services import customer_services as services
 from core.mixins.serializers import HistoricalChangesMixin
+
+User = get_user_model()
 
 class PortfolioSerializer(serializers.ModelSerializer):
     """
@@ -17,6 +21,64 @@ class PortfolioSerializer(serializers.ModelSerializer):
             'balance', 'active', 'created_at', 'last_transfer_date'
         ]
         read_only_fields = ('ref', 'active', 'balance', 'created_at', 'commercial_name', 'last_transfer_date')
+
+
+class CustomerDeactivationPolicySerializer(serializers.Serializer):
+    """
+    Serializer for the customer inactivity auto-deactivation policy.
+    Only Administrators can read/update it.
+    - `inactivity_months`: the exact inactivity duration (in months) after which
+      an inactive customer is deactivated. Default: 48 (4 years).
+    """
+    inactivity_months = serializers.IntegerField(
+        min_value=1, max_value=600,
+        help_text="Inactivity duration in months after which a customer is deactivated.",
+    )
+
+
+class PortfolioAssignSerializer(serializers.Serializer):
+    """
+    Input serializer for the portfolio `assign` action.
+    Accepts an active target commercial and an optional reason.
+    """
+    commercial = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(is_active=True),
+        help_text='Target commercial (must be active) receiving the portfolio',
+    )
+    reason = serializers.CharField(required=False, allow_blank=True, default='')
+
+
+class PortfolioTransferInputSerializer(serializers.Serializer):
+    """
+    Input serializer for the portfolio `transfer` action.
+    Accepts an active target commercial and an optional reason.
+    """
+    to_commercial = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(is_active=True),
+        help_text='Target commercial (must be active) receiving the portfolio',
+    )
+    reason = serializers.CharField(required=False, allow_blank=True, default='')
+
+
+class PortfolioTransferSerializer(serializers.ModelSerializer):
+    """
+    Read-only serializer for the PortfolioTransfer journal (assignment/transfer audit).
+    """
+    portfolio_ref = serializers.CharField(source='portfolio.ref', read_only=True)
+    from_commercial_name = serializers.CharField(source='from_commercial.get_full_name', read_only=True)
+    to_commercial_name = serializers.CharField(source='to_commercial.get_full_name', read_only=True)
+    transferred_by_name = serializers.CharField(source='transferred_by.get_full_name', read_only=True)
+
+    class Meta:
+        model = PortfolioTransfer
+        fields = [
+            'id', 'portfolio', 'portfolio_ref',
+            'from_commercial', 'from_commercial_name',
+            'to_commercial', 'to_commercial_name',
+            'transferred_by', 'transferred_by_name',
+            'reason', 'transferred_at',
+        ]
+        read_only_fields = fields
 
 
 class PhysicalPersonDetailSerializer(serializers.ModelSerializer):

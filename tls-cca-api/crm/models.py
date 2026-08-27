@@ -89,7 +89,7 @@ class MoralPersonDetail(models.Model):
     customer = models.OneToOneField('Customer', on_delete=models.CASCADE, related_name='moral_detail')
     business_name = models.CharField(max_length=255, blank=True)
     registration_number = models.CharField(
-        max_length=20, blank=True, unique=True, 
+        max_length=20, blank=True, null=True, unique=True, 
         help_text="SIRET/NIF/Registry number (unique if provided)"
     )
     legal_form = models.CharField(max_length=100, blank=True)
@@ -101,6 +101,11 @@ class MoralPersonDetail(models.Model):
     class Meta:
         verbose_name = "Moral person detail"
         verbose_name_plural = "Moral person details"
+
+    def save(self, *args, **kwargs):
+        if self.registration_number == "":
+            self.registration_number = None
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.business_name or f"Moral details for {self.customer}"
@@ -127,5 +132,40 @@ class Portfolio(models.Model):
 
     def __str__(self):
         if self.commercial:
-            return f"{self.name} — {self.commercial.get_full_name() or self.commercial.username}"
-        return self.name
+            return f"{self.ref} — {self.commercial.get_full_name() or self.commercial.username}"
+        return self.ref
+
+
+class PortfolioTransfer(models.Model):
+    """
+    Journal entry recording a portfolio assignment / transfer.
+
+    Used to audit every time a portfolio is attributed to a commercial, or
+    transferred away from a leaving commercial.
+    """
+    portfolio = models.ForeignKey(
+        'Portfolio', on_delete=models.PROTECT, related_name='transfers',
+        help_text='The portfolio that was assigned/transferred'
+    )
+    from_commercial = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', help_text='Previous commercial owner (None if unassigned)'
+    )
+    to_commercial = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', help_text='New commercial owner'
+    )
+    transferred_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', help_text='User who performed the assignment/transfer'
+    )
+    reason = models.TextField(blank=True, help_text='Reason for the assignment/transfer')
+    transferred_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-transferred_at']
+        verbose_name = 'Portfolio transfer'
+        verbose_name_plural = 'Portfolio transfers'
+
+    def __str__(self):
+        return f"{self.portfolio} → {self.to_commercial or 'unassigned'}"

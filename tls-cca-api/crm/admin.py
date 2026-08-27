@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Customer, PhysicalPersonDetail, MoralPersonDetail, Portfolio
+from .models import Customer, PhysicalPersonDetail, MoralPersonDetail, Portfolio, PortfolioTransfer
 
 # Les inlines permettent d'éditer les détails directement depuis la page Customer.
 class PhysicalPersonDetailInline(admin.StackedInline):
@@ -49,3 +49,11 @@ class PortfolioAdmin(admin.ModelAdmin):
     list_display = ('ref', 'commercial', 'balance', 'active', 'created_at')
     search_fields = ('ref', 'commercial__username', 'commercial__first_name', 'commercial__last_name')
     readonly_fields = ('created_at',)
+
+@admin.register(PortfolioTransfer)
+class PortfolioTransferAdmin(admin.ModelAdmin):
+    list_display = ('portfolio', 'from_commercial', 'to_commercial', 'transferred_by', 'transferred_at')
+    list_filter = ('transferred_at',)
+    search_fields = ('portfolio__ref', 'from_commercial__username', 'to_commercial__username')
+    readonly_fields = ('transferred_at',)
+    date_hierarchy = 'transferred_at'

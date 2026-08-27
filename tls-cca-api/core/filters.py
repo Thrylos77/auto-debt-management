@@ -1,3 +1,4 @@
+""" core/filters.py """
 from django_filters import rest_framework as filters
 
 class BaseDateRangeFilter(filters.FilterSet):
