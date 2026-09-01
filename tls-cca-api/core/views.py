@@ -14,6 +14,8 @@ class DashboardViewSet(AutoPermissionMixin, viewsets.ViewSet):
     ViewSet for aggregated statistics and dashboard data.
     """
     resource = "dashboard"
+    # The custom `summary` action requires the `dashboard.summary` permission.
+    permission_code_map = {'summary': 'summary'}
     
     @extend_schema(responses={200: dict})
     @action(detail=False, methods=['get'], url_path='summary')

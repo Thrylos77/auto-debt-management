@@ -1,3 +1,5 @@
+""" core/services/search_services.py """
+
 from django.db.models import Q
 from sales.models import CreditSale
 from receivables.models import Debt

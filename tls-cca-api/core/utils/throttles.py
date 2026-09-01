@@ -1,4 +1,5 @@
 """
+core/utils/throttles.py
 Custom throttles for rate-limiting sensitive endpoints.
 """
 from rest_framework.throttling import SimpleRateThrottle

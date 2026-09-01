@@ -1,3 +1,5 @@
+""" core/services/stats_services.py """
+
 from django.db.models import Sum, Count, Q
 from django.db.models.functions import Coalesce
 from sales.models import CreditSale
