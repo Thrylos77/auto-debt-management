@@ -169,6 +169,14 @@
       "label": "Delete a customer"
     },
     {
+      "code": "customer.activate",
+      "label": "Activate a customer"
+    },
+    {
+      "code": "customer.deactivate",
+      "label": "Deactivate a customer"
+    },
+    {
       "code": "customer.list_all",
       "label": "View all customers from all commercials"
     },
@@ -247,6 +255,14 @@
     {
       "code": "creditsale.delete",
       "label": "Delete a credit sale"
+    },
+    {
+      "code": "creditsale.list_all",
+      "label": "List all credit sales from all commercials"
+    },
+    {
+      "code": "creditsale.change_status",
+      "label": "Approve or reject (change status of) a credit sale"
     },
     {
       "code": "creditsale_history.view",
@@ -355,6 +371,10 @@
     {
       "code": "reporting_evolution.view",
       "label": "View Recovery Evolution"
+    },
+    {
+      "code": "dashboard.summary",
+      "label": "View dashboard summary KPIs"
     }
   ],
   "roles": [
@@ -375,28 +395,36 @@
         "customer.list",
         "customer.view",
         "customer.create",
-        "customer.update"
+        "customer.update",
+        "portfolio.list",
+        "portfolio.view",
+        "creditsale.list",
+        "creditsale.view",
+        "creditsale.create",
+        "creditsale.update",
+        "debt.list",
+        "debt.view",
+        "term.list",
+        "term.view",
+        "recovery.list",
+        "recovery.view",
+        "recovery.create"
       ]
     },
     {
       "name": "CONSULTANT",
       "description": "Can manage other users, including creating them and viewing the user list.",
       "permissions": [
-        "user.list",
-        "user.view",
-        "user.update",
-        "user.create",
-        "rbac.add_user_group",
-        "rbac.remove_user_group",
-        "user.change_own_password",
-        "user.request_otp",
-        "user.reset_password",
-        "customer.list",
-        "customer.view",
-        "customer.list_all",
-        "reporting_dashboard.view",
-        "reporting_aging.view",
-        "reporting_evolution.view"
+        "user.list", "user.view", "user.update", "user.create",
+        "user.change_own_password", "user.request_otp", "user.reset_password",
+        "rbac.add_user_group", "rbac.remove_user_group",
+        "customer.list", "customer.view", "customer.list_all",
+        "portfolio.list", "portfolio.view",
+        "creditsale.list", "creditsale.view",
+        "debt.list", "debt.view",
+        "term.list", "term.view",
+        "recovery.list", "recovery.view",
+        "reporting_dashboard.view", "reporting_aging.view", "reporting_evolution.view"
       ]
     },
     {

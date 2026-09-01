@@ -1,3 +1,5 @@
+""" rbac/services/permission_services.py """
+
 # Generic DRF permissions
 from rest_framework.permissions import BasePermission
 from rest_framework.permissions import IsAuthenticated
@@ -22,6 +24,19 @@ class HasPermission(BasePermission):
         if not user or not user.is_authenticated:
             return False
         return user.is_superuser or all(user.has_permission(perm) for perm in self.required_permissions)
+
+
+class DenyPermission(BasePermission):
+    """
+    Fail-closed fallback: denies every request.
+
+    Used by ``AutoPermissionMixin`` when a view declares a ``resource`` but the
+    current action/HTTP method has no explicit mapping in the permission code
+    map. This turns permission misconfigurations into an explicit 403 instead of
+    silently exposing the endpoint to any authenticated user.
+    """
+    def has_permission(self, request, view):
+        return False
 
 DEFAULT_ACTION_MAP = {
     # DRF ViewSets / GenericAPIView "actions"
@@ -76,9 +91,11 @@ class AutoPermissionMixin:
         if perm_suffix:
             return [HasPermission.with_perms(f"{self.resource}.{perm_suffix}")()]
 
-        
-        # 2 : Fallback to default permission classes
-        return [cls() for cls in getattr(self, 'permission_classes', self.default_permission_classes)]
+        # 2 : No explicit mapping -> fail closed. We never silently fall back to
+        # mere authentication when a `resource` is declared: custom actions
+        # (e.g. change_status, list_all) must be explicitly mapped to a
+        # permission code via `permission_code_map`.
+        return [DenyPermission()]
 
 def get_user_permissions(user: User):
     """
