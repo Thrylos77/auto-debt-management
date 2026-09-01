@@ -64,6 +64,9 @@ class RecoveryViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
     Supports CRUD operations with filtering and permission-based access.
     """
     queryset = Recovery.objects.all()
+    queryset = Recovery.objects.select_related(
+        'commercial', 'term__debt__sale__customer__physical_detail', 'term__debt__sale__customer__moral_detail'
+    )
     resource = "recovery"
     serializer_class = RecoverySerializer
     filter_backends = [DjangoFilterBackend]

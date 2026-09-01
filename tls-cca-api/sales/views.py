@@ -21,6 +21,10 @@ class CreditSaleViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
     serializer_class = CreditSaleSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = CreditSaleFilter
+    # Approval/rejection (`change_status`) is intentionally a distinct permission
+    # from editing (`creditsale.update`) to preserve segregation of duties.
+    # `list_all` is limited to users holding `creditsale.list_all`.
+    permission_code_map = {'change_status': 'change_status', 'list_all': 'list_all'}
 
     def get_queryset(self):
         return creditsale_services.get_sales_for_user(self.request.user)
@@ -32,7 +36,11 @@ class CreditSaleViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
         serializer = ChangeCreditSaleStatusSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        creditsale_services.update_credit_sale_status(sale, serializer.validated_data['status'])
+        creditsale_services.update_credit_sale_status(
+            sale,
+            serializer.validated_data['status'],
+            user=request.user,
+        )
         return Response({'detail': 'Status updated successfully.'}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['get'], url_path='list_all')

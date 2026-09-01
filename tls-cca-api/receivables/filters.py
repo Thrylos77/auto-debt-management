@@ -19,4 +19,4 @@ class RecoveryFilter(BaseDateRangeFilter):
     class Meta:
         model = Recovery
         fields = ['payment_mode', 'commercial']
-        date_field = 'date'
+        date_field = 'recovery_date'

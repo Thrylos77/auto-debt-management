@@ -45,14 +45,15 @@ class RecoverySerializer(serializers.ModelSerializer):
     Handles the creation of a recovery payment.
     """
     commercial_name = serializers.CharField(source='commercial.get_full_name', read_only=True)
+    customer_display_name = serializers.CharField(source='term.debt.sale.customer.display_name', read_only=True)
 
     class Meta:
         model = Recovery
         fields = [
             'id', 'term', 'commercial', 'commercial_name', 'amount', 
-            'recovery_date', 'payment_mode', 'receipt'
+            'recovery_date', 'payment_mode', 'receipt', 'customer_display_name'
         ]
-        read_only_fields = ('recovery_date', 'commercial', 'commercial_name')
+        read_only_fields = ('recovery_date', 'commercial', 'commercial_name', 'customer_display_name')
 
     def create(self, validated_data):
         commercial = self.context['request'].user

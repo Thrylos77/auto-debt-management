@@ -12,7 +12,7 @@ class CreditSaleSerializer(serializers.ModelSerializer):
     """
     customer_display_name = serializers.CharField(source='customer.display_name', read_only=True)
     commercial_name = serializers.CharField(source='commercial.get_full_name', read_only=True)
-    portfolio_name = serializers.CharField(source='portfolio.name', read_only=True)
+    portfolio_name = serializers.CharField(source='portfolio.ref', read_only=True)
 
     class Meta:
         model = CreditSale
