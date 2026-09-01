@@ -1,4 +1,5 @@
-# crm/services/customer_services.py
+""" crm/services/customer_services.py """
+
 from django.db import transaction, models
 from django.utils import timezone
 from django.db.models import Subquery, OuterRef

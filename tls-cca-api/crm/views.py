@@ -33,6 +33,9 @@ class CustomerViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
     serializer_class = CustomerSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = CustomerFilter
+    # Custom actions (list_all / activate / deactivate) require dedicated
+    # permission codes: customer.list_all, customer.activate, customer.deactivate.
+    permission_code_map = {'list_all': 'list_all', 'activate': 'activate', 'deactivate': 'deactivate'}
 
     def get_queryset(self):
         return get_customers_for_user(self.request.user)

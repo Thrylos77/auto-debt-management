@@ -1,4 +1,5 @@
-# crm/services/portfolio_services.py
+""" crm/services/portfolio_services.py """
+
 from __future__ import annotations # For compatibility with type hints
 from typing import TYPE_CHECKING, List, Optional
 

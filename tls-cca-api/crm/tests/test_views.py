@@ -113,3 +113,73 @@ class TestPortfolioViews:
         assert response.status_code == 200
         assert PortfolioTransfer.objects.count() >= 1
         assert any(t['portfolio'] == portfolio.id for t in response.data['results'])
+@pytest.mark.django_db
+class TestCustomerCustomActionPermissions:
+    """Validates the fail-closed permission guards on customer custom actions."""
+
+    @staticmethod
+    def _user_with_permissions(*codes):
+        from rbac.models import Permission, Role
+        user = User.objects.create_user(
+            username='crm_perm_{}'.format(abs(hash(codes)) % (10 ** 8)),
+            email='crm_perm_{}@example.com'.format(abs(hash(codes)) % (10 ** 8)),
+            password='x',
+            is_active=True,
+        )
+        role, _ = Role.objects.get_or_create(
+            name='CRM_ROLE_{}'.format(abs(hash(codes)) % (10 ** 8))
+        )
+        for code in codes:
+            perm, _ = Permission.objects.get_or_create(code=code, label=code)
+            role.permissions.add(perm)
+        user.roles.add(role)
+        return user
+
+    def test_custom_actions_denied_without_permission(self, api_client, new_customer):
+        """Authenticated user without the dedicated permissions gets 403."""
+        user = self._user_with_permissions('customer.create')
+        api_client.force_authenticate(user=user)
+
+        response = api_client.get(reverse('customer-list-all'))
+        assert response.status_code == 403
+
+        response = api_client.post(
+            reverse('customer-activate', kwargs={'pk': new_customer.pk}), {}, format='json'
+        )
+        assert response.status_code == 403
+
+        response = api_client.post(
+            reverse('customer-deactivate', kwargs={'pk': new_customer.pk}), {}, format='json'
+        )
+        assert response.status_code == 403
+
+    def test_activate_allows_with_permission(self, api_client, new_customer):
+        Customer.objects.filter(pk=new_customer.pk).update(is_active=False)
+        new_customer.refresh_from_db()
+        user = self._user_with_permissions('customer.activate', 'customer.list_all')
+        api_client.force_authenticate(user=user)
+        response = api_client.post(
+            reverse('customer-activate', kwargs={'pk': new_customer.pk}), {}, format='json'
+        )
+        assert response.status_code == 200
+        new_customer.refresh_from_db()
+        assert new_customer.is_active is True
+
+    def test_deactivate_allows_with_permission(self, api_client, new_customer):
+        user = self._user_with_permissions('customer.deactivate', 'customer.list_all')
+        api_client.force_authenticate(user=user)
+        response = api_client.post(
+            reverse('customer-deactivate', kwargs={'pk': new_customer.pk}), {}, format='json'
+        )
+        assert response.status_code == 200
+        new_customer.refresh_from_db()
+        assert new_customer.is_active is False
+
+    def test_list_all_requires_list_all_permission(self, api_client, new_customer):
+        ordinary = self._user_with_permissions('customer.view')
+        api_client.force_authenticate(user=ordinary)
+        assert api_client.get(reverse('customer-list-all')).status_code == 403
+
+        consultant = self._user_with_permissions('customer.list_all')
+        api_client.force_authenticate(user=consultant)
+        assert api_client.get(reverse('customer-list-all')).status_code == 200
