@@ -22,6 +22,16 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone', 'birthday', 'address', 'roles', 'groups')
+
+class OwnProfileSerializer(serializers.ModelSerializer):
+    roles = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    groups = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone', 'birthday', 'address', 'roles', 'groups')
+
+
 # Serializer for user registration
 class RegisterSerializer(serializers.ModelSerializer):
     roles = serializers.PrimaryKeyRelatedField(many=True, queryset=Role.objects.all(), required=False)

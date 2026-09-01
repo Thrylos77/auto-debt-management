@@ -12,10 +12,10 @@ from rbac.services.permission_services import AutoPermissionMixin
 from core.utils.throttles import OTPRateThrottle, LoginRateThrottle
 from users.models import User
 from users.serializers import (
-    RegisterSerializer, UserSerializer, HistoricalUserSerializer,
+    OwnProfileSerializer, RegisterSerializer, UserSerializer,
     ChangeOwnPasswordSerializer, AdminChangePasswordSerializer,
     RequestOTPSerializer, ResetPasswordSerializer,
-    LogoutSerializer,
+    LogoutSerializer, HistoricalUserSerializer,
 )
 from users.services import otp_services, user_services
 
@@ -31,13 +31,26 @@ class TokenObtainPairView(SimpleJWTTokenObtainPairView):
     throttle_classes = [LoginRateThrottle]
     
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.user
+
+        if user.is_2fa_enabled:
+            temp_token = AccessToken.for_user(user)
+            temp_token.set_exp(lifetime=timedelta(minutes=TEMP_TOKEN_LIFETIME_MINUTES))
+            temp_token['is_2fa_temp'] = True
+
+            return Response({
+                "temp_token": str(temp_token),
+                "requires_2fa": True,
+            }, status=status.HTTP_200_OK)
         
+        # Normal comportement if 2FA is not enabled
+        response = super().post(request, *args, **kwargs)
+
         if response.status_code == 200:
-            # The user object is attached to the serializer after successful validation
-            serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-            
+            response.data["requires_2fa"] = False
+        
         return response
 
 # Register a new user
@@ -48,8 +61,8 @@ class RegisterView(AutoPermissionMixin, generics.CreateAPIView):
 
 # This view allows users to retrieve their own details
 @extend_schema(tags=["Users"])
-class UserDetailView(generics.RetrieveAPIView):
-    serializer_class = UserSerializer
+class UserDetailView(generics.RetrieveUpdateAPIView):
+    serializer_class = OwnProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):

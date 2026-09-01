@@ -1,7 +1,7 @@
 """
 users/services/twofa_services.py
 
-Services 2FA / TOTP utilisant pyotp (compatible Google Authenticator).
+Services 2FA / TOTP using pyotp (compatible Google Authenticator).
 """
 
 import base64
@@ -13,13 +13,13 @@ from django.conf import settings
 
 
 def generate_totp_secret() -> str:
-    """Génère une nouvelle clé secrète TOTP."""
+    """Generates a new base32 secret for TOTP (used for 2FA)."""
     return pyotp.random_base32()
 
 
 def get_totp_uri(user, secret: str) -> str:
     """
-    Construit l'URI otpauth:// pour le QR code.
+    Builds the otpauth:// URI for the QR code.
     Format : otpauth://totp/{issuer}:{username}?secret={secret}&issuer={issuer}
     """
     issuer = settings.TOTP_ISSUER
@@ -30,7 +30,7 @@ def get_totp_uri(user, secret: str) -> str:
 
 
 def generate_qr_code_base64(uri: str) -> str:
-    """Génère une image QR code et la retourne en base64 (data URI)."""
+    """Generates a QR code image and returns it in base64 (data URI)."""
     img = qrcode.make(uri)
     buffer = io.BytesIO()
     img.save(buffer, format="PNG")
@@ -40,7 +40,7 @@ def generate_qr_code_base64(uri: str) -> str:
 
 
 def verify_totp_code(secret: str, code: str) -> bool:
-    """Vérifie un code TOTP par rapport à un secret. Retourne True si valide."""
+    """Verifies a TOTP code against a secret. Returns True if valid."""
     if not secret:
         return False
     totp = pyotp.TOTP(secret)
@@ -49,11 +49,11 @@ def verify_totp_code(secret: str, code: str) -> bool:
 
 def enable_2fa(user, secret: str, code: str):
     """
-    Vérifie le code de configuration et active le 2FA pour l'utilisateur.
-    Lève une ValidationError si le code est invalide.
+    Verifies the configuration code and enables 2FA for the user.
+    Raises a ValidationError if the code is invalid.
     """
     if not verify_totp_code(secret, code):
-        raise ValidationError({"code": "Code TOTP invalide. Veuillez réessayer."})
+        raise ValidationError({"code": "Invalid TOTP code. Please try again."})
 
     user.totp_secret = secret
     user.is_2fa_enabled = True
@@ -61,9 +61,9 @@ def enable_2fa(user, secret: str, code: str):
 
 
 def disable_2fa(user, password: str):
-    """Désactive le 2FA pour l'utilisateur après vérification de son mot de passe."""
+    """Disables 2FA for the user after verifying their password."""
     if not user.check_password(password):
-        raise ValidationError({"password": "Mot de passe incorrect."})
+        raise ValidationError({"password": "Incorrect password."})
 
     user.totp_secret = None
     user.is_2fa_enabled = False
