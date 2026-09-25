@@ -39,7 +39,7 @@ dist/
 # Migrations (optional)
 # If you don't want to keep generated ones
 **/migrations/
-!*/migrations/__init__.py
+#!*/migrations/__init__.py
 
 # Specifics files
 tls-cca-api/docs/Fonctionnalité-Control.txt
