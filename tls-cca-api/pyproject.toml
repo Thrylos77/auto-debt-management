@@ -25,6 +25,7 @@ gunicorn = "^26.0.0"
 black = "^26.5.1"
 pyotp = "^2.10.0"
 qrcode = {extras = ["pil"], version = "^8.2"}
+python-dateutil = "^2.9.0.post0"
 
 
 [tool.pytest.ini_options]
