@@ -10,9 +10,11 @@ from django.contrib.auth.password_validation import validate_password
 from users.models import User, OTP
 from users.utils import generate_otp, send_otp_email
 
+# Cooldown period between OTP requests (120 seconds)
 COOLDOWN_SECONDS = 120
 
 def can_request_new_otp(user: User):
+    """Check if the user can request a new OTP (cooldown period)."""
     last_otp = OTP.objects.filter(user=user).order_by('-created_at').first()
     if not last_otp:
         return True, 0
@@ -26,6 +28,7 @@ def can_request_new_otp(user: User):
 
 @transaction.atomic
 def request_password_reset_otp(user: User):
+    """Generate and send an OTP for password reset."""
     can_request, remaining = can_request_new_otp(user)
     if not can_request:
         raise ValidationError({
@@ -50,6 +53,7 @@ def request_password_reset_otp(user: User):
 
 @transaction.atomic
 def reset_password_with_otp(user: User, otp_code: str, new_password: str):
+    """Validate the OTP and reset the user's password."""
     otp_obj = (
         OTP.objects
         .filter(user=user, is_used=False)

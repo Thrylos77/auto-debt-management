@@ -1,7 +1,22 @@
 import pytest
 from users.models import User, OTP
+from django.contrib.auth.hashers import make_password
 from django.utils import timezone
 from datetime import timedelta
+
+
+def _create_otp(user, raw_code='123456', is_used=False, is_expired=False):
+    """Creates an OTP using the current (hashed) model API."""
+    expires_at = timezone.now() + timedelta(minutes=OTP.EXPIRATION_MINUTES)
+    if is_expired:
+        expires_at = timezone.now() - timedelta(minutes=1)
+    return OTP.objects.create(
+        user=user,
+        code_hash=make_password(raw_code),
+        expires_at=expires_at,
+        is_used=is_used,
+    )
+
 
 @pytest.mark.django_db
 def test_user_creation():
@@ -32,10 +47,10 @@ def test_otp_creation():
         email='otp@example.com', 
         password='password'
     )
-    otp = OTP.objects.create(user=user, code='123456')
+    otp = _create_otp(user, raw_code='123456')
 
     assert otp.user == user
-    assert otp.code == '123456'
+    assert otp.check_code('123456') is True
     assert otp.is_used is False
     assert otp.is_valid() is True
     assert str(otp) == f"OTP for {user} created at {otp.created_at}"
@@ -50,15 +65,13 @@ def test_otp_is_valid_method():
         email='validotp@example.com', 
         password='password')
     # Test a valid OTP
-    valid_otp = OTP.objects.create(user=user, code='123456')
+    valid_otp = _create_otp(user, raw_code='123456')
     assert valid_otp.is_valid() is True
 
     # Test an expired OTP
-    expired_otp = OTP.objects.create(user=user, code='654321')
-    expired_otp.created_at = timezone.now() - timedelta(minutes=OTP.EXPIRATION_MINUTES + 1)
-    expired_otp.save()
+    expired_otp = _create_otp(user, raw_code='654321', is_expired=True)
     assert expired_otp.is_valid() is False
 
     # Test a used OTP
-    used_otp = OTP.objects.create(user=user, code='112233', is_used=True)
+    used_otp = _create_otp(user, raw_code='112233', is_used=True)
     assert used_otp.is_valid() is False

@@ -1,6 +1,9 @@
 """users/tests/test_views.py"""
 import pytest
+from datetime import timedelta
+from django.contrib.auth.hashers import make_password
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 from users.models import User, OTP
@@ -146,7 +149,11 @@ class TestPasswordViews:
         assert OTP.objects.filter(user=user).exists()
 
     def test_reset_password_with_otp(self, api_client, user):
-        otp = OTP.objects.create(user=user, code='654321')
+        otp = OTP.objects.create(
+            user=user,
+            code_hash=make_password('654321'),
+            expires_at=timezone.now() + timedelta(minutes=OTP.EXPIRATION_MINUTES),
+        )
         url = reverse('reset-password')
         data = {
             'email': user.email,
