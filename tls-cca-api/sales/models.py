@@ -25,6 +25,8 @@ class CreditSale(models.Model):
     sale_date = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0,  validators=[MinValueValidator(0)])
     deposit = models.DecimalField(max_digits=12, decimal_places=2, default=0,  validators=[MinValueValidator(0)])
+    month_duration = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    first_due_date = models.DateField(null=True, blank=True, help_text="Optional date of the first installment. If not set, the first term is due one month after the debt start date.")
     status = models.CharField(max_length=30, choices=CreditSaleStatus.choices, default=CreditSaleStatus.PENDING_APPROVAL)
     proof_doc = models.FileField(upload_to='docs/sales/', null=True, blank=True)
     history = HistoricalRecords()

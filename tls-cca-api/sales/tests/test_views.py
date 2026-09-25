@@ -6,7 +6,7 @@ from rest_framework.test import APIClient
 from sales.models import CreditSale, CreditSaleStatus
 from crm.models import Portfolio
 from rbac.models import Permission, Role
-from receivables.models import Debt
+from receivables.models import Debt, TermStatus
 
 @pytest.fixture
 def api_client():
@@ -107,7 +107,48 @@ class TestCreditSalePermissionGuards:
         assert response.status_code == 200
         sale.refresh_from_db()
         assert sale.status == CreditSaleStatus.APPROVED
-        assert Debt.objects.filter(sale=sale).exists()
+        debt = Debt.objects.get(sale=sale)
+        # Default month_duration (1) generates a single full-amount term
+        assert debt.month_duration == 1
+        assert debt.monthly_payment == Decimal('1000.00')
+        terms = list(debt.terms.all())
+        assert len(terms) == 1
+        assert terms[0].except_amount == Decimal('1000.00')
+        assert terms[0].term_status == TermStatus.UNPAID
+
+    def test_approval_generates_terms_from_sale_month_duration(self, api_client, new_customer):
+        """Approving a sale reports month_duration onto the Debt and generates
+        as many Terms as sale.month_duration, splitting the amount evenly."""
+        approver = self._user_with_permissions(
+            'creditsale.change_status', 'creditsale.list_all'
+        )
+        commercial = self._user_with_permissions('creditsale.create')
+        portfolio = Portfolio.objects.create(ref='PF_TERMS', commercial=commercial)
+        sale = CreditSale.objects.create(
+            customer=new_customer,
+            commercial=commercial,
+            portfolio=portfolio,
+            total_amount=Decimal('1200.00'),
+            deposit=Decimal('200.00'),
+            month_duration=6,
+        )
+        api_client.force_authenticate(user=approver)
+        url = reverse('creditsale-change-status', kwargs={'pk': sale.pk})
+        response = api_client.post(url, {'status': 'approved'}, format='json')
+        assert response.status_code == 200
+        sale.refresh_from_db()
+        assert sale.status == CreditSaleStatus.APPROVED
+
+        debt = Debt.objects.get(sale=sale)
+        assert debt.month_duration == 6
+        assert debt.init_amount == Decimal('1000.00')
+        assert debt.monthly_payment == Decimal('166.67')
+
+        terms = list(debt.terms.all().order_by('term_date'))
+        assert len(terms) == 6
+        assert [t.except_amount for t in terms] == [Decimal('166.67')] * 5 + [Decimal('166.65')]
+        assert sum((t.except_amount for t in terms), Decimal('0.00')) == debt.init_amount
+        assert all(t.term_status == TermStatus.UNPAID for t in terms)
 
     def test_commercial_cannot_approve_own_sale_even_with_permission(
         self, api_client, new_customer

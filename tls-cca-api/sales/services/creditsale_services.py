@@ -1,10 +1,12 @@
 """ sales/services/creditsale_services.py """
 
+from django.db import transaction
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import PermissionDenied
 from sales.models import CreditSale, CreditSaleStatus
 from receivables.models import Debt, DebtStatus
+from receivables.services import term_services
 
 def update_credit_sale_status(sale, new_status, user=None):
     """
@@ -26,13 +28,20 @@ def update_credit_sale_status(sale, new_status, user=None):
     if new_status == CreditSaleStatus.APPROVED and sale.status != CreditSaleStatus.APPROVED:
         if not Debt.objects.filter(sale=sale).exists():
             debt_amount = sale.total_amount - sale.deposit
-            Debt.objects.create(
-                sale=sale,
-                init_amount=debt_amount,
-                balance=debt_amount,
-                debt_status=DebtStatus.NOT_STARTED,
-                regulation_mode="UNDEFINED" # Placeholder, needs to be defined later
-            )
+            with transaction.atomic():
+                debt = Debt.objects.create(
+                    sale=sale,
+                    init_amount=debt_amount,
+                    balance=debt_amount,
+                    debt_status=DebtStatus.NOT_STARTED,
+                    regulation_mode="UNDEFINED",  # Placeholder, needs to be defined later
+                    month_duration=sale.month_duration,
+                )
+                # Automatically generate the payment schedule (Terms)
+                monthly_payment = term_services.generate_terms_for_debt(debt, debt_amount)
+                if monthly_payment != debt.monthly_payment:
+                    debt.monthly_payment = monthly_payment
+                    debt.save(update_fields=['monthly_payment'])
 
     sale.status = new_status
     sale.save()

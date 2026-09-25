@@ -24,6 +24,8 @@ class CreditSaleSerializer(serializers.ModelSerializer):
             'sale_date', 
             'total_amount', 
             'deposit', 
+            'month_duration', 
+            'first_due_date', 
             'status', 
             'proof_doc'
         ]
@@ -52,5 +54,5 @@ class HistoricalCreditSaleSerializer(serializers.ModelSerializer, HistoricalChan
             'history_id', 'history_date', 'history_type_display', 'history_user', 'changes',
             'customer_display_name', 'commercial', 'commercial_name',
             'portfolio_ref', 'sale_date', 'total_amount', 
-            'deposit', 'status', 'proof_doc'
+            'deposit', 'month_duration', 'first_due_date', 'status', 'proof_doc'
         ]
