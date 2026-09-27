@@ -32,7 +32,7 @@ class SessionRevokeView(generics.DestroyAPIView):
         if not SessionPolicy.can_revoke(request.user, session):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You do not have permission to revoke this session.")
-        SessionService().revoke_session(session, actor=request.user)
+        SessionService().revoke_session(session, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -41,5 +41,5 @@ class SessionRevokeAllView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        SessionService().revoke_all_sessions(request.user, actor=request.user)
+        SessionService().revoke_all_sessions(request.user, actor=request.user, request=request)
         return Response({"detail": "All sessions revoked."}, status=status.HTTP_200_OK)

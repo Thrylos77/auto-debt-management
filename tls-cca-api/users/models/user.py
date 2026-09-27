@@ -4,7 +4,6 @@ RBAC and the legacy TOTP fields remain temporarily for data migration compatibil
 New application code must use the dedicated security profile and the RBAC services.
 """
 
-from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -36,13 +35,13 @@ class User(AbstractUser):
 
     @property
     def all_permissions(self):
-        """Legacy permission accessor kept until PermissionResolver becomes canonical."""
-        from rbac.services import permission_services
-
-        return permission_services.get_user_permissions(self)
+        """Compatibility accessor; PermissionResolver is the canonical implementation."""
+        from rbac.services.permission_resolver import PermissionResolver
+        return PermissionResolver.get_queryset(self)
 
     def has_permission(self, code: str) -> bool:
-        return self.is_superuser or self.all_permissions.filter(code=code).exists()
+        from rbac.services.permission_resolver import PermissionResolver
+        return PermissionResolver.has(self, code)
 
     def __str__(self):
         return f"{self.get_full_name()} {self.username}".strip()

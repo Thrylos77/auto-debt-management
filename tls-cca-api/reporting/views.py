@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
 
-from rbac.services.permission_services import AutoPermissionMixin
+from rbac.policies.permission_policy import AutoPermissionMixin
 from .serializers import DashboardSummarySerializer, AgingReportSerializer, EvolutionPointSerializer
 from .services import reporting_services
 

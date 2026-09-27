@@ -5,7 +5,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from sales.models import CreditSale, CreditSaleStatus
 from crm.models import Portfolio
-from rbac.models import Permission, Role
+from rbac.models import Permission, Role, RoleAssignment
 from receivables.models import Debt, TermStatus
 
 @pytest.fixture
@@ -66,7 +66,7 @@ class TestCreditSalePermissionGuards:
         for code in codes:
             perm, _ = Permission.objects.get_or_create(code=code, label=code)
             role.permissions.add(perm)
-        user.roles.add(role)
+        RoleAssignment.objects.create(user=user, role=role)
         return user
 
     @staticmethod

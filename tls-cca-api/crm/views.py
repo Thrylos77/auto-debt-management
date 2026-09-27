@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
-from rbac.services.permission_services import AutoPermissionMixin
+from rbac.policies.permission_policy import AutoPermissionMixin
 from .models import *
 from .serializers import *
 from .filters import CustomerFilter
@@ -46,7 +46,7 @@ class CustomerViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
         Lists all customers without any filters.
         Accessible only by Admin and Consultant roles.
         """
-        all_customers = Customer.objects.all()
+        all_customers = Customer.objects.all().order_by("id")
         page = self.paginate_queryset(all_customers)
         if page is not None:
             serializer = self.get_serializer(page, many=True)

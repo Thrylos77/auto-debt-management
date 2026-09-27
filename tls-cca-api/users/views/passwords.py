@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 
 from core.throttling import OTPRateThrottle, PasswordResetRateThrottle
-from rbac.services.permission_services import AutoPermissionMixin
+from rbac.policies.permission_policy import AutoPermissionMixin
 from users.serializers.passwords import AdminChangePasswordSerializer, ChangeOwnPasswordSerializer, RequestOTPSerializer, ResetPasswordSerializer
 from users.services.password_service import PasswordService
 from users.services import otp_service
@@ -27,6 +27,7 @@ class ChangeOwnPasswordView(generics.GenericAPIView):
             serializer.validated_data["new_password"],
             old_password=serializer.validated_data["old_password"],
             actor=request.user,
+            request=request,
         )
         return Response({"detail": "Password changed successfully."}, status=status.HTTP_200_OK)
 
@@ -52,6 +53,7 @@ class AdminChangePasswordView(AutoPermissionMixin, generics.GenericAPIView):
             serializer.validated_data["new_password"],
             actor=request.user,
             force=True,
+            request=request,
         )
         return Response({"detail": "Password changed successfully."}, status=status.HTTP_200_OK)
 
@@ -88,7 +90,7 @@ class ResetPasswordView(generics.GenericAPIView):
         user = User.objects.filter(email__iexact=serializer.validated_data["email"]).first()
         if not user:
             return Response({"detail": "Unable to reset password."}, status=status.HTTP_400_BAD_REQUEST)
-        otp_service.reset_password_with_otp(user, serializer.validated_data["otp"], serializer.validated_data["new_password"])
+        otp_service.reset_password_with_otp(user, serializer.validated_data["otp"], serializer.validated_data["new_password"], request=request)
         return Response({"detail": "Password reset successfully."}, status=status.HTTP_200_OK)
 
     create = post

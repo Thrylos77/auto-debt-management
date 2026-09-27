@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
-from rbac.services.permission_services import AutoPermissionMixin
+from rbac.policies.permission_policy import AutoPermissionMixin
 from .models import *
 from .serializers import *
 from .services import creditsale_services

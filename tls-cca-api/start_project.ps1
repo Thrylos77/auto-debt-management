@@ -1,10 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 function Run-Step {
-    param (
-        [string]$Title,
-        [scriptblock]$Command
-    )
+    param ([string]$Title, [scriptblock]$Command)
     Write-Host "`n[STEP] $Title..." -ForegroundColor Cyan
     & $Command
     if ($LASTEXITCODE -ne 0) {
@@ -15,26 +12,30 @@ function Run-Step {
     Write-Host "[OK] Etape reussie." -ForegroundColor Green
 }
 
-# 1. Verification Django
-Run-Step "Verification Django (Check)" {
-    poetry run python manage.py check
+Run-Step "Verification Django (Check)" { 
+    poetry run python manage.py check 
+}
+Run-Step "Detection / generation des migrations" { 
+    poetry run python manage.py makemigrations audit core crm rbac receivables reporting sales users
+}
+Run-Step "Application des migrations" { 
+    poetry run python manage.py migrate 
+}
+Run-Step "Verification absence de migration manquante" { 
+    poetry run python manage.py makemigrations --check --dry-run 
+}
+Run-Step "Backfill RBAC legacy vers V2" { 
+    poetry run python manage.py backfill_legacy_rbac 
+}
+Run-Step "Apercu synchronisation RBAC (DRY-RUN)" { 
+    poetry run python manage.py sync_rbac --dry-run --strict 
+}
+Run-Step "Synchronisation declarative RBAC" { 
+    poetry run python manage.py sync_rbac --strict 
+}
+Run-Step "Tests Pytest + pagination sans warning" { 
+    poetry run pytest -v -W error::django.core.paginator.UnorderedObjectListWarning 
 }
 
-# 2. Detection des migrations
-Run-Step "Detection des migrations" {
-    poetry run python manage.py makemigrations core rbac crm sales receivables users
-}
-
-# 3. Application des migrations
-Run-Step "Application des migrations" {
-    poetry run python manage.py migrate
-}
-
-# 4. Tests unitaires
-Run-Step "Execution des tests Pytest" {
-    poetry run pytest
-}
-
-# 5. Demarrage du serveur
 Write-Host "`n[START] Lancement du serveur sur http://0.0.0.0:7000..." -ForegroundColor Green
 poetry run python manage.py runserver 0.0.0.0:7000

@@ -1,5 +1,7 @@
 """ sales/services/creditsale_services.py """
 
+from rbac.services.permission_resolver import PermissionResolver
+
 from django.db import transaction
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
@@ -53,7 +55,7 @@ def get_sales_for_user(user):
     - Admin/Superuser: All sales
     - Commercial: Sales where they are the commercial OR assigned via portfolio
     """
-    if user.is_superuser or user.has_permission('creditsale.list_all'):
+    if user.is_superuser or PermissionResolver.has(user, 'creditsale.list_all'):
         return CreditSale.objects.all()
     
     # For commercials: direct sales OR sales via their active portfolio

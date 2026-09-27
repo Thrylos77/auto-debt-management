@@ -2,10 +2,13 @@ from datetime import datetime, timezone
 from django.db import transaction
 from django.utils import timezone as django_timezone
 from rest_framework.exceptions import ValidationError
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from audit.services import AuditService
 from users.models import UserSession
+from users.events import user_session_revoked
 
 
 class SessionService:
@@ -27,35 +30,70 @@ class SessionService:
         return UserSession.objects.filter(user=user).order_by("-created_at")
 
     @transaction.atomic
-    def revoke_session(self, session: UserSession, *, actor=None):
+    def revoke_session(self, session: UserSession, *, actor=None, request=None):
         if session.revoked_at is not None:
             return session
         self._blacklist_jti(session.jti)
         session.revoked_at = django_timezone.now()
         session.save(update_fields=["revoked_at"])
+        transaction.on_commit(lambda: user_session_revoked.send(
+            sender=session.__class__, user=session.user, actor=actor, session=session,
+            request=request,
+        ))
         return session
 
     @transaction.atomic
-    def revoke_all_sessions(self, user, *, actor=None):
-        sessions = UserSession.objects.select_for_update().filter(user=user, revoked_at__isnull=True)
+    def revoke_all_sessions(self, user, *, actor=None, request=None):
+        sessions = list(UserSession.objects.select_for_update().filter(user=user, revoked_at__isnull=True))
+        now = django_timezone.now()
         for session in sessions:
             self._blacklist_jti(session.jti)
-        return sessions.update(revoked_at=django_timezone.now())
+            session.revoked_at = now
+            session.save(update_fields=["revoked_at"])
+            transaction.on_commit(lambda session=session: user_session_revoked.send(
+                sender=session.__class__, user=session.user, actor=actor, session=session,
+                request=request, reason="all_sessions",
+            ))
+        return len(sessions)
 
     def mark_seen(self, session: UserSession):
         session.last_seen_at = django_timezone.now()
         session.save(update_fields=["last_seen_at"])
         return session
 
-    @transaction.atomic
-    def revoke_refresh_token(self, token_string: str):
+    def revoke_refresh_token(self, token_string: str, *, actor=None, request=None):
         try:
             refresh = RefreshToken(token_string)
             jti = str(refresh["jti"])
-            self._blacklist_jti(jti)
-            UserSession.objects.filter(jti=jti, revoked_at__isnull=True).update(revoked_at=django_timezone.now())
-        except Exception as exc:
+            refresh_user_id = refresh.get("user_id")
+        except (TokenError, KeyError, TypeError, ValueError) as exc:
             raise ValidationError({"refresh": "Token is invalid or expired."}) from exc
+
+        if actor is not None and str(refresh_user_id) != str(actor.pk):
+            AuditService.record(
+                actor=actor, category="AUTHORIZATION", action="session.refresh_revoke",
+                status="denied", reason="Refresh token does not belong to current user.",
+                request=request,
+            )
+            raise ValidationError({"refresh": "Token does not belong to the current user."})
+
+        with transaction.atomic():
+            session = UserSession.objects.filter(jti=jti, revoked_at__isnull=True).first()
+            if actor is not None and session is not None and session.user_id != actor.pk:
+                AuditService.record(
+                    actor=actor, category="AUTHORIZATION", action="session.refresh_revoke",
+                    resource=session, status="denied", reason="Session does not belong to current user.",
+                    request=request,
+                )
+                raise ValidationError({"refresh": "Token does not belong to the current user."})
+            self._blacklist_jti(jti)
+            if session:
+                session.revoked_at = django_timezone.now()
+                session.save(update_fields=["revoked_at"])
+                transaction.on_commit(lambda: user_session_revoked.send(
+                    sender=session.__class__, user=session.user, actor=actor, session=session,
+                    request=request, reason="refresh_token",
+                ))
 
     @staticmethod
     def _blacklist_jti(jti: str):

@@ -1,5 +1,7 @@
 """ core/services/stats_services.py """
 
+from rbac.services.permission_resolver import PermissionResolver
+
 from django.db.models import Sum, Count, Q
 from django.db.models.functions import Coalesce
 from sales.models import CreditSale
@@ -11,7 +13,7 @@ def get_global_stats(user):
     - Superusers/users with 'dashboard.view_all_stats' see everything.
     - Other users (commercials) see only their sales, debts, and recoveries.
     """
-    has_global_view = user.is_superuser or user.has_permission('dashboard.view_all_stats')
+    has_global_view = user.is_superuser or PermissionResolver.has(user, 'dashboard.view_all_stats')
 
     if has_global_view:
         sales_qs = CreditSale.objects.all()

@@ -10,6 +10,7 @@ from core.throttling import LoginRateThrottle, TwoFARateThrottle
 from users.serializers.auth import Login2FASerializer, LoginSerializer, LogoutSerializer
 from users.services.authentication import AuthenticationService
 from users.services.session_service import SessionService
+from users.events import user_logout
 
 
 @extend_schema(tags=["Authentication"])
@@ -58,7 +59,8 @@ class LogoutView(generics.GenericAPIView):
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        SessionService().revoke_refresh_token(serializer.validated_data["refresh"])
+        SessionService().revoke_refresh_token(serializer.validated_data["refresh"], actor=request.user, request=request)
+        user_logout.send(sender=request.user.__class__, user=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

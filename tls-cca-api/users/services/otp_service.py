@@ -43,7 +43,7 @@ def request_password_reset_otp(user):
 
 
 @transaction.atomic
-def reset_password_with_otp(user, otp_code, new_password):
+def reset_password_with_otp(user, otp_code, new_password, *, request=None):
     otp = (
         OTP.objects.select_for_update()
         .filter(user=user, is_used=False)
@@ -64,5 +64,5 @@ def reset_password_with_otp(user, otp_code, new_password):
     otp.save(update_fields=["is_used", "used_at"])
 
     from .password_service import PasswordService
-    PasswordService().change_password(user, new_password, actor=user, force=True)
+    PasswordService().change_password(user, new_password, actor=user, force=True, request=request)
     return user

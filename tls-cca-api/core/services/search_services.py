@@ -1,5 +1,7 @@
 """ core/services/search_services.py """
 
+from rbac.services.permission_resolver import PermissionResolver
+
 from django.db.models import Q
 from sales.models import CreditSale
 from receivables.models import Debt
@@ -20,7 +22,7 @@ def search_global(user, query):
         return results
 
     # --- 1. Search Scope Definition ---
-    has_global_view = user.is_superuser or user.has_permission('dashboard.view_all_stats')
+    has_global_view = user.is_superuser or PermissionResolver.has(user, 'dashboard.view_all_stats')
 
     # --- 2. Search in Credit Sales ---
     if has_global_view:
@@ -76,9 +78,9 @@ def search_global(user, query):
     ]
 
     # --- 4. Search in Customers ---
-    if user.is_superuser or user.has_permission('customer.list_all'):
+    if user.is_superuser or PermissionResolver.has(user, 'customer.list_all'):
         customers_qs = Customer.objects.all()
-    elif user.has_permission('customer.list'):
+    elif PermissionResolver.has(user, 'customer.list'):
         # Customer has a portfolio, which has a commercial.
         customers_qs = Customer.objects.filter(portfolio__commercial=user)
     else:

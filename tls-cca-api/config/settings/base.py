@@ -60,11 +60,10 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "drf_spectacular_sidecar",
     "simple_history",
-
-    # Custom apps
     "core.apps.CoreConfig",
     "users.apps.UsersConfig",
     "rbac.apps.RbacConfig",
+    "audit.apps.AuditConfig",
     "sales.apps.SalesConfig",
     "crm.apps.CrmConfig",
     "receivables.apps.ReceivablesConfig",
@@ -125,7 +124,7 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "core.pagination.pagination.StandardPageNumberPagination",
-    "PAGE_SIZE": 15,
+    "PAGE_SIZE": 25,
     "EXCEPTION_HANDLER": "core.exceptions.handlers.api_exception_handler",
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",

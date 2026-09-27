@@ -21,6 +21,7 @@ urlpatterns = [
     path("api/sales/", include("sales.urls")),
     path("api/receivables/", include("receivables.urls")),
     path("api/reporting/", include("reporting.urls")),
+    path("api/audit/", include("audit.urls")),
     path("api/token/", LegacyTokenObtainPairView.as_view(), name="legacy-token-obtain"),
     path("api/token/logout/", LogoutView.as_view(), name="legacy-token-logout"),
     path("api/token/refresh/", RefreshView.as_view(), name="legacy-token-refresh"),

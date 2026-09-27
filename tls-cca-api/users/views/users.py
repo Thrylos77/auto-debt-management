@@ -4,7 +4,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 
-from rbac.services.permission_services import AutoPermissionMixin
+from rbac.policies.permission_policy import AutoPermissionMixin
 from users.models import User
 from users.policies.user_policy import UserPolicy
 from users.serializers.users import HistoricalUserSerializer, OwnProfileSerializer, RegisterSerializer, UserSerializer
@@ -68,6 +68,7 @@ class UserRetrieveUpdateDestroyView(AutoPermissionMixin, generics.RetrieveUpdate
             successor_user=successor,
             reason=request.data.get("reason", ""),
             actor=request.user,
+            request=request,
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -83,7 +84,7 @@ class ReactivateUserView(AutoPermissionMixin, generics.GenericAPIView):
         if not UserPolicy.can_reactivate(request.user, target):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You do not have permission to reactivate this user.")
-        user_service.reactivate_user(target, actor=request.user)
+        user_service.reactivate_user(target, actor=request.user, request=request)
         return Response({"detail": "User has been reactivated."}, status=status.HTTP_200_OK)
 
 

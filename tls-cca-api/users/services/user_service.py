@@ -24,7 +24,7 @@ def update_user(user, validated_data):
 
 
 @transaction.atomic
-def deactivate_user(user, *, successor_user=None, reason=None, actor=None):
+def deactivate_user(user, *, successor_user=None, reason=None, actor=None, request=None):
     if not user.is_active:
         return user
     user.is_active = False
@@ -35,16 +35,17 @@ def deactivate_user(user, *, successor_user=None, reason=None, actor=None):
         successor_user=successor_user,
         reason=reason or "Account deactivated",
         actor=actor,
+        request=request,
     )
     return user
 
 
-def reactivate_user(user, *, actor=None):
+def reactivate_user(user, *, actor=None, request=None):
     if user.is_active:
         return user
     user.is_active = True
     user.save(update_fields=["is_active"])
-    user_reactivated.send(sender=User, user=user, actor=actor)
+    user_reactivated.send(sender=User, user=user, actor=actor, request=request)
     return user
 
 

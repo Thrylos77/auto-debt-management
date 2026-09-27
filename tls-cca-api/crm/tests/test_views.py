@@ -119,7 +119,7 @@ class TestCustomerCustomActionPermissions:
 
     @staticmethod
     def _user_with_permissions(*codes):
-        from rbac.models import Permission, Role
+        from rbac.models import Permission, Role, RoleAssignment
         user = User.objects.create_user(
             username='crm_perm_{}'.format(abs(hash(codes)) % (10 ** 8)),
             email='crm_perm_{}@example.com'.format(abs(hash(codes)) % (10 ** 8)),
@@ -132,7 +132,7 @@ class TestCustomerCustomActionPermissions:
         for code in codes:
             perm, _ = Permission.objects.get_or_create(code=code, label=code)
             role.permissions.add(perm)
-        user.roles.add(role)
+        RoleAssignment.objects.create(user=user, role=role)
         return user
 
     def test_custom_actions_denied_without_permission(self, api_client, new_customer):

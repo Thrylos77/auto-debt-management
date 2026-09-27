@@ -31,6 +31,7 @@ class VerifySetup2FAView(generics.GenericAPIView):
             request.user,
             serializer.validated_data["setup_token"],
             serializer.validated_data["code"],
+            request=request,
         )
         return Response({"detail": "2FA has been enabled successfully.", "is_2fa_enabled": True, "recovery_codes": recovery_codes}, status=status.HTTP_200_OK)
 
@@ -46,5 +47,5 @@ class Disable2FAView(generics.GenericAPIView):
         if not TwoFAPolicy.can_manage(request.user, request.user):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("You do not have permission to manage 2FA.")
-        TwoFAService().disable(request.user, serializer.validated_data["password"])
+        TwoFAService().disable(request.user, serializer.validated_data["password"], request=request)
         return Response({"detail": "2FA has been disabled.", "is_2fa_enabled": False}, status=status.HTTP_200_OK)
