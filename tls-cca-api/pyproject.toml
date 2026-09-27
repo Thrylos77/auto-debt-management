@@ -26,10 +26,10 @@ black = "^26.5.1"
 pyotp = "^2.10.0"
 qrcode = {extras = ["pil"], version = "^8.2"}
 python-dateutil = "^2.9.0.post0"
-
+cryptography = "^50.0.1"
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings"
+DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["test_*.py"]
 addopts = "-ra"
 

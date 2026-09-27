@@ -15,17 +15,6 @@ def main():
             "forget to activate a virtual environment?"
         ) from exc
 
-    # Automatic admin and RBAC creation when running the server with DEBUG=True
-    if 'runserver' in sys.argv:
-        import django
-        django.setup()
-        from django.conf import settings
-        if getattr(settings, 'DEBUG', False) and os.environ.get('RUN_MAIN') == 'true':
-            from django.core.management import call_command
-            call_command('init_admin')
-            call_command('seed_rbac_v2')
-
-    
     execute_from_command_line(sys.argv)
 
 
