@@ -9,7 +9,7 @@ from django.db.models import Subquery, OuterRef
 from ..models import Customer, PhysicalPersonDetail, MoralPersonDetail, Portfolio
 from sales.models import CreditSale
 from receivables.models import Debt
-from core.services import settings_services
+from .inactivity_policy import get_customer_inactivity_threshold
 
 
 def create_customer(validated_data: dict, creator=None) -> Customer:
@@ -94,7 +94,7 @@ def auto_deactivate_inactive_customers() -> tuple[int, int]:
 
     Returns a tuple of (number of customers checked, number of customers deactivated).
     """
-    inactivity_threshold = settings_services.get_customer_inactivity_threshold()
+    inactivity_threshold = get_customer_inactivity_threshold()
 
     # Subquery to find the last sale date for a customer
     last_sale_date = CreditSale.objects.filter(

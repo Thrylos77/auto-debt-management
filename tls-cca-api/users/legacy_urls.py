@@ -1,21 +1,23 @@
+"""Backward-compatible URLs for clients still using the legacy API surface."""
+
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
-from .views import (
-    AdminChangePasswordView, AllUserHistoryListView, ChangeOwnPasswordView, Disable2FAView,
-    Enable2FAView, Login2FAView, LogoutView, ReactivateUserView, RegisterView, ResetPasswordView,
-    RequestOTPView, TokenObtainPairView, UserDetailView, UserHistoryListView, UserListView,
-    UserRetrieveUpdateDestroyView, VerifySetup2FAView,
-)
+from .views import AdminChangePasswordView, AllUserHistoryListView, ChangeOwnPasswordView
+from .views import Disable2FAView, Enable2FAView, Login2FAView, LogoutView
+from .views import ReactivateUserView, RegisterView, ResetPasswordView, RequestOTPView
+from .views import TokenObtainPairView, UserDetailView, UserHistoryListView, UserListView
+from .views import UserRetrieveUpdateDestroyView, VerifySetup2FAView
+
 
 urlpatterns = [
-    path("register/", RegisterView.as_view(), name="register"),
-    path("me/", UserDetailView.as_view(), name="user-detail"),
-    path("", UserListView.as_view(), name="user-list"),
-    path("<int:pk>/", UserRetrieveUpdateDestroyView.as_view(), name="user-rud"),
-    path("<int:pk>/reactivate/", ReactivateUserView.as_view(), name="user-reactivate"),
-    path("history/<int:pk>/", UserHistoryListView.as_view(), name="user-history-detail"),
-    path("history/", AllUserHistoryListView.as_view(), name="user-history-list"),
+    path("register/", RegisterView.as_view(), name="legacy-register"),
+    path("me/", UserDetailView.as_view(), name="legacy-user-detail"),
+    path("", UserListView.as_view(), name="legacy-user-list"),
+    path("<int:pk>/", UserRetrieveUpdateDestroyView.as_view(), name="legacy-user-rud"),
+    path("<int:pk>/reactivate/", ReactivateUserView.as_view(), name="legacy-user-reactivate"),
+    path("history/<int:pk>/", UserHistoryListView.as_view(), name="legacy-user-history-detail"),
+    path("history/", AllUserHistoryListView.as_view(), name="legacy-user-history-list"),
     path("change-password/<int:pk>/", AdminChangePasswordView.as_view(), name="change-password"),
     path("change-own-password/", ChangeOwnPasswordView.as_view(), name="change-own-password"),
     path("request-otp/", RequestOTPView.as_view(), name="request-otp"),

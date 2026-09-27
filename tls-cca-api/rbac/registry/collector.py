@@ -25,9 +25,15 @@ class RoleDefinition:
 
 
 APP_REGISTRIES = (
-    "rbac.rbac_registry", "users.rbac_registry", "core.rbac_registry", "crm.rbac_registry",
-    "sales.rbac_registry", "receivables.rbac_registry", "reporting.rbac_registry",
+    "rbac.rbac_registry",
+    "users.rbac_registry",
+    "core.rbac_registry",
+    "crm.rbac_registry",
+    "sales.rbac_registry",
+    "receivables.rbac_registry",
+    "reporting.rbac_registry",
     "audit.rbac_registry",
+    "configuration.rbac_registry",
 )
 
 

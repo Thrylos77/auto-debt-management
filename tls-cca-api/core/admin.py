@@ -1,11 +1,4 @@
-from django.contrib import admin
+"""Core admin registration.
 
-from core.models import SystemSetting
-
-
-@admin.register(SystemSetting)
-class SystemSettingAdmin(admin.ModelAdmin):
-    list_display = ("key", "value", "updated_at")
-    search_fields = ("key", "value")
-    readonly_fields = ("updated_at",)
-
+Application-specific models are registered by their owning Django apps.
+"""

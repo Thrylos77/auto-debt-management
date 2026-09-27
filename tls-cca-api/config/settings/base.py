@@ -64,6 +64,8 @@ INSTALLED_APPS = [
     "users.apps.UsersConfig",
     "rbac.apps.RbacConfig",
     "audit.apps.AuditConfig",
+    "configuration.apps.ConfigurationConfig",
+    "notifications.apps.NotificationsConfig",
     "sales.apps.SalesConfig",
     "crm.apps.CrmConfig",
     "receivables.apps.ReceivablesConfig",

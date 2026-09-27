@@ -5,6 +5,8 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
+from notifications.services import NotificationService
+
 from users.models import OTP
 from users.utils import generate_otp
 
@@ -34,8 +36,10 @@ def request_password_reset_otp(user):
     )
 
     try:
-        from .email_gateway import send_password_reset_otp
-        send_password_reset_otp(email=user.email, otp=raw_code)
+        NotificationService.notify_password_reset_otp(
+            user=user,
+            otp=raw_code,
+        )
     except Exception as exc:
         otp.delete()
         raise ValidationError({"detail": "Unable to send OTP."}) from exc

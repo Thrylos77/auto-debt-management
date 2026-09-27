@@ -7,9 +7,11 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from audit.models import AuditEvent
 from crm.models import Customer
 from crm.services import customer_services
-from core.services import settings_services
+from configuration.models import SystemSetting
+from crm.services import inactivity_policy
 
 User = get_user_model()
 
@@ -23,7 +25,7 @@ class TestAutoDeactivationUsesConfiguredPolicy:
         return customer
 
     def test_deactivates_beyond_configured_months(self):
-        settings_services.set_customer_inactivity_months(2)
+        inactivity_policy.set_customer_inactivity_months(2)
         now = timezone.now()
 
         old_customer = self._create_customer(now - timedelta(days=90))   # ~3 months ago
@@ -87,7 +89,24 @@ class TestCustomerDeactivationPolicyView:
         assert response.status_code == 200
         assert response.data['inactivity_months'] == 36
         # Config actually persisted and used by the service
-        assert settings_services.get_customer_inactivity_months() == 36
+        assert inactivity_policy.get_customer_inactivity_months() == 36
+
+
+    def test_update_policy_creates_configuration_audit_event(self, api_client, admin):
+        api_client.force_authenticate(user=admin)
+        url = reverse('customer-deactivation-policy')
+
+        response = api_client.put(
+            url,
+            {'inactivity_months': 36},
+            format='json',
+        )
+
+        assert response.status_code == 200
+        assert AuditEvent.objects.filter(
+            action='configuration.set',
+            status='success',
+        ).exists()
 
     def test_update_policy_rejects_invalid(self, api_client, admin):
         api_client.force_authenticate(user=admin)

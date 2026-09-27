@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 from users.models import User, OTP
+from notifications.models import Notification, NotificationDelivery
 from users.tests.factories import UserFactory
 
 @pytest.fixture
@@ -145,8 +146,19 @@ class TestPasswordViews:
         url = reverse('request-otp')
         data = {'email': user.email}
         response = api_client.post(url, data)
+
         assert response.status_code == 200
         assert OTP.objects.filter(user=user).exists()
+        notification = Notification.objects.get(
+            user=user,
+            code='password_reset_otp',
+        )
+        assert notification.category == Notification.SECURITY
+        delivery = NotificationDelivery.objects.get(
+            notification=notification,
+            channel=NotificationDelivery.CHANNEL_EMAIL,
+        )
+        assert delivery.status == NotificationDelivery.STATUS_SENT
 
     def test_reset_password_with_otp(self, api_client, user):
         otp = OTP.objects.create(

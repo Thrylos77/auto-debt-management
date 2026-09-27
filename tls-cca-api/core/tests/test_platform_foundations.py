@@ -22,3 +22,10 @@ def test_correlation_id_is_returned():
     response = APIClient().get(reverse("health-live"), HTTP_X_CORRELATION_ID="test-correlation-123")
     assert response.status_code == 200
     assert response["X-Correlation-ID"] == "test-correlation-123"
+
+
+def test_platform_apps_are_registered():
+    from django.conf import settings
+
+    assert "configuration.apps.ConfigurationConfig" in settings.INSTALLED_APPS
+    assert "notifications.apps.NotificationsConfig" in settings.INSTALLED_APPS

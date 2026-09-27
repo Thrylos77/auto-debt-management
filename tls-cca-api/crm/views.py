@@ -18,7 +18,12 @@ from .services.customer_services import (
     get_customers_for_user,
 )
 from .services import portfolio_services
-from core.services import settings_services
+from .services.inactivity_policy import (
+    DEFAULT_CUSTOMER_INACTIVITY_MONTHS,
+    get_customer_inactivity_months,
+    get_customer_inactivity_threshold,
+    set_customer_inactivity_months,
+)
 
 @extend_schema(tags=["Customers"])
 class CustomerViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
@@ -117,24 +122,29 @@ class CustomerBulkDeactivationView(AutoPermissionMixin, APIView):
 class CustomerDeactivationPolicyView(AutoPermissionMixin, APIView):
     """
     Read/update the customer inactivity auto-deactivation policy.
-    Access restricted to Administrators only (`customer_deactivation.view/update`).
+    Access is controlled by the canonical configuration permissions.
 
     - `inactivity_months` (default **48** = 4 years): the exact inactivity
       duration in months after which an inactive customer is deactivated.
     """
-    resource = "customer_deactivation"
+    resource = "configuration"
     serializer_class = CustomerDeactivationPolicySerializer
+    permission_code_map = {
+        "GET": "view",
+        "PUT": "update",
+        "PATCH": "update",
+    }
 
     @extend_schema(
         summary="Get customer inactivity policy",
         responses=CustomerDeactivationPolicySerializer,
     )
     def get(self, request, *args, **kwargs):
-        months = settings_services.get_customer_inactivity_months()
+        months = get_customer_inactivity_months()
         data = {
             "inactivity_months": months,
-            "default_inactivity_months": settings_services.DEFAULT_CUSTOMER_INACTIVITY_MONTHS,
-            "threshold_date": settings_services.get_customer_inactivity_threshold().isoformat(),
+            "default_inactivity_months": DEFAULT_CUSTOMER_INACTIVITY_MONTHS,
+            "threshold_date": get_customer_inactivity_threshold().isoformat(),
         }
         return Response(data, status=status.HTTP_200_OK)
 
@@ -148,12 +158,16 @@ class CustomerDeactivationPolicyView(AutoPermissionMixin, APIView):
         serializer.is_valid(raise_exception=True)
         months = serializer.validated_data["inactivity_months"]
 
-        settings_services.set_customer_inactivity_months(months)
+        set_customer_inactivity_months(
+            months,
+            actor=request.user,
+            request=request,
+        )
 
         data = {
             "inactivity_months": months,
-            "default_inactivity_months": settings_services.DEFAULT_CUSTOMER_INACTIVITY_MONTHS,
-            "threshold_date": settings_services.get_customer_inactivity_threshold().isoformat(),
+            "default_inactivity_months": DEFAULT_CUSTOMER_INACTIVITY_MONTHS,
+            "threshold_date": get_customer_inactivity_threshold().isoformat(),
         }
         return Response(data, status=status.HTTP_200_OK)
 
