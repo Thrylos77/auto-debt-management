@@ -1,20 +1,19 @@
-""" users/signals.py """
-
-import json
+from django.contrib.auth import get_user_model
+from django.db.models.signals import post_save
 from django.dispatch import receiver
-from simple_history.signals import pre_create_historical_record
-from .models import User
+from django.utils import timezone
+
+from .models import UserPreference, UserSecurityProfile
+
+User = get_user_model()
 
 
-# Signal to add roles snapshot to the historical record
-# This will store the current roles of a User in the history record
-@receiver(pre_create_historical_record)
-def add_roles_snapshot(sender, **kwargs):
-    instance = kwargs['instance']
-    history_instance = kwargs['history_instance']
-    if not isinstance(instance, User):
+@receiver(post_save, sender=User)
+def create_identity_profiles(sender, instance, created, **kwargs):
+    if not created:
         return
-    names = list(instance.roles.values_list('name', flat=True))
-    data = json.loads(history_instance.history_change_reason or '{}')
-    data['roles'] = names
-    history_instance.history_change_reason = json.dumps(data)
+    UserPreference.objects.get_or_create(user=instance)
+    UserSecurityProfile.objects.get_or_create(
+        user=instance,
+        defaults={"last_password_change_at": timezone.now()},
+    )

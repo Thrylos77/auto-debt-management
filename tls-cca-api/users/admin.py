@@ -1,62 +1,54 @@
-""" users/admin.py """
-
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User
-
 from simple_history.admin import SimpleHistoryAdmin
-# Import the token models from simplejwt
-from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
-admin.site.unregister(OutstandingToken)
-admin.site.unregister(BlacklistedToken)
+
+from .models import RecoveryCode, TwoFAChallenge, TwoFASetup, User, UserPreference, UserSecurityProfile, UserSession
 
 
 @admin.register(User)
 class CustomUserAdmin(SimpleHistoryAdmin, UserAdmin):
-    # Customize the fields displayed in the user list
-    list_display = ('username', 'email', 'first_name', 'last_name', 'birthday', 'is_staff', '_roles', '_groups')
-
-    def _roles(self, obj):
-        return ", ".join([role.name for role in obj.roles.all()])
-    _roles.short_description = 'Roles'
-
-    def _groups(self, obj):
-        return ", ".join([group.name for group in obj.groups.all()])
-    _groups.short_description = 'Groups'
-
-    def get_queryset(self, request):
-        # Optimization to avoid N+1 problem
-        queryset = super().get_queryset(request)
-        return queryset.prefetch_related('roles', 'groups')
-
-    add_fieldsets = UserAdmin.add_fieldsets + (
-        ('RBAC', {'fields': ('roles',)}),
+    list_display = ("username", "email", "first_name", "last_name", "is_active", "is_staff", "is_2fa_enabled")
+    search_fields = ("username", "email", "first_name", "last_name")
+    fieldsets = UserAdmin.fieldsets + (
+        ("Identity", {"fields": ("phone", "address", "birthday")}),
+        ("Legacy migration", {"fields": ("roles", "totp_secret", "is_2fa_enabled")}),
     )
 
 
+@admin.register(UserPreference)
+class UserPreferenceAdmin(admin.ModelAdmin):
+    list_display = ("user", "language", "timezone", "theme", "email_notifications", "system_notifications")
+    search_fields = ("user__username", "user__email")
 
-# This code registers the AuditLog model with the Django admin interface.
-# It customizes the admin display for AuditLog entries:
-# - Shows columns: timestamp, user, action, and details in the list view.
-# - Allows filtering logs by action and user.
-# - Enables searching logs by the username of the user and the details field.
-@admin.register(OutstandingToken)
-class OutstandingTokenAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'jti', 'created_at', 'expires_at')
-    list_select_related = ('user',)
-    search_fields = ('user__username', 'jti')
-    ordering = ('-created_at',)
 
-@admin.register(BlacklistedToken)
-class BlacklistedTokenAdmin(admin.ModelAdmin):
-    list_display = ('id', 'get_user', 'get_jti', 'blacklisted_at')
-    search_fields = ('token__user__username', 'token__jti')
-    ordering = ('-blacklisted_at',)
+@admin.register(UserSecurityProfile)
+class UserSecurityProfileAdmin(admin.ModelAdmin):
+    list_display = ("user", "two_factor_enabled", "failed_login_count", "locked_until", "last_password_change_at")
+    search_fields = ("user__username", "user__email")
+    readonly_fields = ("totp_secret_encrypted",)
 
-    @admin.display(description='User', ordering='token__user')
-    def get_user(self, obj):
-        return obj.token.user
 
-    @admin.display(description='JTI (JWT ID)', ordering='token__jti')
-    def get_jti(self, obj):
-        return obj.token.jti
+@admin.register(UserSession)
+class UserSessionAdmin(admin.ModelAdmin):
+    list_display = ("user", "created_at", "last_seen_at", "expires_at", "revoked_at", "jti")
+    list_filter = ("revoked_at",)
+    search_fields = ("user__username", "jti", "device_name", "platform")
+    readonly_fields = tuple(field.name for field in UserSession._meta.fields)
+
+
+@admin.register(RecoveryCode)
+class RecoveryCodeAdmin(admin.ModelAdmin):
+    list_display = ("user", "created_at", "used_at", "revoked_at")
+    readonly_fields = tuple(field.name for field in RecoveryCode._meta.fields)
+
+
+@admin.register(TwoFASetup)
+class TwoFASetupAdmin(admin.ModelAdmin):
+    list_display = ("user", "created_at", "expires_at", "attempts", "used_at")
+    readonly_fields = tuple(field.name for field in TwoFASetup._meta.fields)
+
+
+@admin.register(TwoFAChallenge)
+class TwoFAChallengeAdmin(admin.ModelAdmin):
+    list_display = ("user", "created_at", "expires_at", "attempts", "used_at")
+    readonly_fields = tuple(field.name for field in TwoFAChallenge._meta.fields)
