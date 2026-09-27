@@ -31,11 +31,19 @@ class DebtStatusUpdateView(AutoPermissionMixin, views.APIView):
     Should be called by a scheduler.
     """
     resource = "debt"
-    permission_suffix = "update_status" # Requires permission: debt.update_status
+    permission_suffix = "update_status"  # Requires permission: debt.update_status
+    serializer_class = DebtStatusUpdateSerializer
 
     def get_permission_code_map(self):
         return {'POST': f"{self.permission_suffix}"}
 
+    @extend_schema(
+        summary="Update financial debt statuses",
+        request=DebtStatusUpdateSerializer,
+        responses={
+            200: DebtStatusUpdateResponseSerializer,
+        },
+    )
     def post(self, request, *args, **kwargs):
         # Validate input before triggering the status update
         serializer = DebtStatusUpdateSerializer(data=request.data)

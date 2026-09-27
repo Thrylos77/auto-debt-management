@@ -145,6 +145,28 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "API backend for the CCA application.",
     "VERSION": "2.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Legacy routes remain operational for compatibility but are excluded
+    # from the OpenAPI document so the canonical /api/v1/ contract stays
+    # unique and does not generate duplicate operation IDs.
+    "PREPROCESSING_HOOKS": [
+        "config.schema.remove_legacy_paths",
+    ],
+    # Two models expose a field named ``status`` with different choices.
+    # Naming those enums explicitly avoids Status/Status001 collisions in the
+    # generated schema.
+    "ENUM_NAME_OVERRIDES": {
+        "CreditSaleStatusEnum": [
+            ("pending_approval", "Pending Approval"),
+            ("approved", "Approved"),
+            ("rejected", "Rejected"),
+            ("cancelled", "Cancelled"),
+        ],
+        "AuditEventStatusEnum": [
+            ("success", "Success"),
+            ("failure", "Failure"),
+            ("denied", "Denied"),
+        ],
+    },
 }
 
 SIMPLE_JWT = {

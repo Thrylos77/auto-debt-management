@@ -6,6 +6,10 @@ from rest_framework.response import Response
 from users.models import UserSession
 from users.policies.session_policy import SessionPolicy
 from users.serializers.sessions import UserSessionSerializer
+from users.serializers.users import (
+    EmptyRequestSerializer,
+    SessionActionResponseSerializer,
+)
 from users.services.session_service import SessionService
 
 
@@ -15,6 +19,9 @@ class SessionListView(generics.ListAPIView):
     serializer_class = UserSessionSerializer
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return UserSession.objects.none()
+
         return SessionService().list_user_sessions(self.request.user)
 
 
@@ -39,7 +46,13 @@ class SessionRevokeView(generics.DestroyAPIView):
 @extend_schema(tags=["Sessions"])
 class SessionRevokeAllView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = EmptyRequestSerializer
 
+    @extend_schema(
+        summary="Revoke all user sessions",
+        request=None,
+        responses=SessionActionResponseSerializer,
+    )
     def post(self, request):
         SessionService().revoke_all_sessions(request.user, actor=request.user, request=request)
         return Response({"detail": "All sessions revoked."}, status=status.HTTP_200_OK)

@@ -27,6 +27,11 @@ class CreditSaleViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
     permission_code_map = {'change_status': 'change_status', 'list_all': 'list_all'}
 
     def get_queryset(self):
+        # During OpenAPI generation there is no authenticated user.  Returning
+        # an empty queryset keeps schema inspection independent from RBAC data.
+        if getattr(self, "swagger_fake_view", False):
+            return CreditSale.objects.none()
+
         return creditsale_services.get_sales_for_user(self.request.user)
 
     @extend_schema(request=ChangeCreditSaleStatusSerializer, responses={200: None})

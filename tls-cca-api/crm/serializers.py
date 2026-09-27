@@ -36,6 +36,16 @@ class CustomerDeactivationPolicySerializer(serializers.Serializer):
     )
 
 
+
+
+class CustomerBulkDeactivationResponseSerializer(serializers.Serializer):
+    """Response returned by the automatic customer deactivation endpoint."""
+
+    checked_customers = serializers.IntegerField()
+    deactivated_customers = serializers.IntegerField()
+    detail = serializers.CharField()
+
+
 class PortfolioAssignSerializer(serializers.Serializer):
     """
     Input serializer for the portfolio `assign` action.

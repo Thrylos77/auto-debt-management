@@ -5,7 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema
 
 from rbac.policies.permission_policy import AutoPermissionMixin
 from .models import *
@@ -88,22 +88,15 @@ class CustomerBulkDeactivationView(AutoPermissionMixin, APIView):
     """
     resource = "customer"
     permission_suffix = "auto_customer_desactivation"
+    serializer_class = CustomerBulkDeactivationResponseSerializer
 
     def get_permission_code_map(self):
         return {'POST': f"{self.permission_suffix}"}
     
     @extend_schema(
-        summary="Auto-deactivate Inactive Customers",
-        responses={
-            200: OpenApiParameter(
-                name='Deactivation Summary',
-                type={'type': 'object', 'properties': {
-                    'checked_customers': {'type': 'integer'},
-                    'deactivated_customers': {'type': 'integer'},
-                    'detail': {'type': 'string'}
-                }}
-            )
-        }
+        summary="Auto-deactivate inactive customers",
+        request=None,
+        responses=CustomerBulkDeactivationResponseSerializer,
     )
     def post(self, request, *args, **kwargs):
         """

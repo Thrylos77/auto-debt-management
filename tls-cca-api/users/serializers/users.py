@@ -74,3 +74,15 @@ class HistoricalUserSerializer(serializers.ModelSerializer):
                     changes.append({"field": change.field, "old": change.old, "new": change.new})
             return changes
         return None
+
+
+class EmptyRequestSerializer(serializers.Serializer):
+    """Placeholder serializer for endpoints that intentionally take no body."""
+
+    pass
+
+
+class SessionActionResponseSerializer(serializers.Serializer):
+    """Generic response used by session management action endpoints."""
+
+    detail = serializers.CharField()

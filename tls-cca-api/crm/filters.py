@@ -2,20 +2,9 @@
 
 import django_filters
 from django.contrib.auth import get_user_model
-from django.db.models import Q
 from .models import Customer
 
 User = get_user_model()
-
-def commercial_queryset(request):
-    return User.objects.filter(
-        is_active=True,
-    ).filter(
-        Q(user_permissions__codename='customer.create') |
-        Q(groups__group__permissions__codename='customer.create') |
-        Q(is_superuser=True)
-    ).distinct()
-
 
 class CustomerFilter(django_filters.FilterSet):
     """
@@ -27,8 +16,11 @@ class CustomerFilter(django_filters.FilterSet):
     - commercial (user responsible for the portfolio)
     """
 
+    # Map the filter directly to the portfolio relation.  Besides being
+    # simpler than a custom method, this lets drf-spectacular infer the
+    # parameter as a user primary key instead of falling back to a string.
     commercial = django_filters.ModelChoiceFilter(
-        method="filter_commercial",
+        field_name="portfolio__commercial",
         queryset=User.objects.all(),
         label="Commercial",
     )
@@ -39,6 +31,3 @@ class CustomerFilter(django_filters.FilterSet):
             'customer_type': ['exact'],
             'is_active': ['exact'],
         }
-
-    def filter_commercial(self, queryset, name, value):
-        return queryset.filter(portfolio__commercial=value)

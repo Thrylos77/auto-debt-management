@@ -73,6 +73,12 @@ class DebtStatusUpdateSerializer(serializers.Serializer):
     )
 
 
+class DebtStatusUpdateResponseSerializer(serializers.Serializer):
+    """Response returned after the debt status update job completes."""
+
+    detail = serializers.CharField()
+
+
 """
 Historical Serializers
 """

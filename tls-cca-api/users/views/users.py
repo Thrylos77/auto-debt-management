@@ -1,13 +1,19 @@
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 
 from rbac.policies.permission_policy import AutoPermissionMixin
 from users.models import User
 from users.policies.user_policy import UserPolicy
-from users.serializers.users import HistoricalUserSerializer, OwnProfileSerializer, RegisterSerializer, UserSerializer
+from users.serializers.users import (
+    EmptyRequestSerializer,
+    HistoricalUserSerializer,
+    OwnProfileSerializer,
+    RegisterSerializer,
+    UserSerializer,
+)
 from users.services import user_service
 
 
@@ -76,9 +82,18 @@ class UserRetrieveUpdateDestroyView(AutoPermissionMixin, generics.RetrieveUpdate
 @extend_schema(tags=["Users"])
 class ReactivateUserView(AutoPermissionMixin, generics.GenericAPIView):
     queryset = User.objects.all()
+    serializer_class = EmptyRequestSerializer
     resource = "user"
     permission_code_map = {"POST": "reactivate"}
 
+    @extend_schema(
+        summary="Reactivate a user",
+        request=None,
+        responses=OpenApiResponse(
+            response=UserSerializer,
+            description="The user has been reactivated.",
+        ),
+    )
     def post(self, request, *args, **kwargs):
         target = self.get_object()
         if not UserPolicy.can_reactivate(request.user, target):
@@ -92,9 +107,18 @@ class ReactivateUserView(AutoPermissionMixin, generics.GenericAPIView):
 class UserHistoryListView(AutoPermissionMixin, generics.ListAPIView):
     serializer_class = HistoricalUserSerializer
     resource = "user_history"
+    queryset = User.history.none()
 
     def get_queryset(self):
-        return User.history.filter(id=self.kwargs["pk"]).order_by("-history_date")
+        # OpenAPI generation does not provide the runtime ``pk`` kwarg.
+        # Return the empty historical queryset while drf-spectacular inspects
+        # the view, then resolve the real object history during requests.
+        if getattr(self, "swagger_fake_view", False):
+            return self.queryset
+
+        return User.history.filter(
+            id=self.kwargs["pk"]
+        ).order_by("-history_date")
 
 
 @extend_schema_view(get=extend_schema(operation_id="all_user_history", tags=["Users"]))
