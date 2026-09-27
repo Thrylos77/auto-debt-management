@@ -1,46 +1,58 @@
-""" core/views.py """
+"""Core health and legacy dashboard/search views."""
 
-from rest_framework import viewsets, status, views
+from django.db import connection
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
+from rest_framework import status, views, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiParameter
 
+from core.services import search_services, stats_services
 from rbac.services.permission_services import AutoPermissionMixin
-from .services import stats_services, search_services
+
+
+class LivenessView(views.APIView):
+    permission_classes = []
+
+    @extend_schema(responses={200: dict})
+    def get(self, request):
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
+
+class ReadinessView(views.APIView):
+    permission_classes = []
+
+    @extend_schema(responses={200: dict, 503: dict})
+    def get(self, request):
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+        except Exception:
+            return Response(
+                {"status": "not_ready", "checks": {"database": "down"}},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response(
+            {"status": "ready", "checks": {"database": "ok"}},
+            status=status.HTTP_200_OK,
+        )
+
 
 @extend_schema(tags=["Dashboard"])
 class DashboardViewSet(AutoPermissionMixin, viewsets.ViewSet):
-    """
-    ViewSet for aggregated statistics and dashboard data.
-    """
     resource = "dashboard"
-    # The custom `summary` action requires the `dashboard.summary` permission.
-    permission_code_map = {'summary': 'summary'}
-    
+    permission_code_map = {"summary": "summary"}
+
     @extend_schema(responses={200: dict})
-    @action(detail=False, methods=['get'], url_path='summary')
+    @action(detail=False, methods=["get"], url_path="summary")
     def summary(self, request):
-        """
-        Returns global KPIs (Sales, Debts, Recoveries) based on the user's scope.
-        """
         stats = stats_services.get_global_stats(request.user)
         return Response(stats, status=status.HTTP_200_OK)
 
+
 @extend_schema(tags=["Search"])
 class GlobalSearchView(views.APIView):
-    """
-    Global search endpoint returning grouped results (Sales, Debts, etc.).
-    """
-    permission_classes = [] # Géré manuellement ou via IsAuthenticated par défaut dans settings
-
-    @extend_schema(
-        parameters=[OpenApiParameter(name='q', description='Search query', required=True, type=str)],
-        responses={200: dict}
-    )
     def get(self, request):
-        query = request.query_params.get('q', '').strip()
-        if not request.user.is_authenticated:
-            return Response({"detail": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
-            
+        query = request.query_params.get("q", "").strip()
         results = search_services.search_global(request.user, query)
         return Response(results, status=status.HTTP_200_OK)

@@ -1,4 +1,4 @@
-﻿"""core/tests/test_views.py"""
+"""core/tests/test_views.py"""
 import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
