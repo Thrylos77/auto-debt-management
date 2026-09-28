@@ -44,9 +44,26 @@ def test_openapi_generation_excludes_legacy_routes_and_keeps_v1_contract(caplog)
         for path in paths
     )
 
-    assert "/api/roles/" not in paths
-    assert "/api/roles/history/" not in paths
     assert "/api/v1/users/" in paths
+
+    legacy_prefixes = (
+        "/api/core/",
+        "/api/users/",
+        "/api/permissions/",
+        "/api/roles/",
+        "/api/groups/",
+        "/api/crm/",
+        "/api/sales/",
+        "/api/receivables/",
+        "/api/reporting/",
+        "/api/audit/",
+        "/api/token/",
+    )
+    assert not any(
+        path.startswith(prefix)
+        for path in paths
+        for prefix in legacy_prefixes
+    )
 
     assert len(operation_ids) == len(set(operation_ids))
     assert EXPECTED_HISTORY_OPERATION_IDS.issubset(set(operation_ids))

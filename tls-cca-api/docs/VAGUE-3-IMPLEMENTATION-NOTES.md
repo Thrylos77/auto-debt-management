@@ -1,6 +1,8 @@
 # Vague 3 — Configuration + Notifications
 
-Cette vague introduit les deux services transverses prévus par l’architecture.
+Cette vague a introduit les deux services transverses prévus par l'architecture.
+Les éléments de migration legacy ci-dessous décrivent uniquement l'historique
+de transition ; ils ne font plus partie des commandes opérationnelles courantes.
 
 ## Configuration
 
@@ -9,7 +11,6 @@ Cette vague introduit les deux services transverses prévus par l’architecture
 - Les clés autorisées sont déclarées dans `configuration.registry.definitions`.
 - Les écritures sont centralisées dans `ConfigurationService` et auditées.
 - Le paramètre CRM `customer_inactivity_duration_months` passe par cet API.
-- Le script de démarrage migre les anciennes valeurs Core avant de retirer l’ancien modèle.
 
 ## Notifications
 
@@ -18,7 +19,7 @@ Cette vague introduit les deux services transverses prévus par l’architecture
 - Les livraisons sont journalisées dans `NotificationDelivery`.
 - Les templates personnalisables sont stockés dans `NotificationTemplate`.
 - Les notifications de sécurité ne peuvent pas être désactivées par les préférences utilisateur.
-- L’OTP de réinitialisation n’envoie plus de SMTP depuis `users` : il passe par `NotificationService` puis `EmailChannel`.
+- L'OTP de réinitialisation passe par `NotificationService` puis `EmailChannel`.
 
 ## URLs Users
 
@@ -28,27 +29,14 @@ Cette vague introduit les deux services transverses prévus par l’architecture
 - `users.urls.account`
 - `users.urls.security`
 
-`config.v1_urls` ne référence que `users.urls` pour la surface Users. Les noms et chemins V1 existants sont conservés.
+`config.v1_urls` ne référence que `users.urls` pour la surface Users. Les noms et chemins V1 sont conservés.
 
+## Migrations historiques
 
-## Migration des anciens paramètres
+La migration `configuration.0004_migrate_legacy_systemsetting` reste conservée dans
+l'historique Django afin de préserver la chaîne de migration des bases existantes.
+Elle ne doit pas être remplacée par une commande manuelle de backfill lors des
+déploiements actuels.
 
-La migration `configuration.0004_migrate_legacy_systemsetting` copie le paramètre
-CRM historique avant que `core.0002_remove_systemsetting` ne supprime l'ancien modèle.
-Le script `start_project.ps1` applique donc la chaîne de migrations plutôt que de
-dépendre uniquement d'une commande manuelle de backfill.
-
-## Legacy Users URLs
-
-`users/legacy_urls.py` remains temporarily for backward compatibility with clients
-using the pre-V1 `/api/users/` surface. Its URL names use a `legacy-` prefix so they
-cannot shadow the canonical V1 URL names used by `users.urls`.
-
-The canonical application structure remains:
-
-- `users.urls.auth`
-- `users.urls.account`
-- `users.urls.security`
-
-The legacy surface is planned for removal during the final hardening/deprecation step
-after consumers have migrated to `/api/v1/`.
+Les anciens modules de routes Users et les commandes de migration ponctuelle ont
+été retirés lors de la finalisation de la Vague 4.

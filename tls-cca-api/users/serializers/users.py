@@ -1,9 +1,7 @@
-import json
-
-from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from django.contrib.auth.password_validation import validate_password
+from drf_spectacular.utils import extend_schema_field
 
 from users.models import User
 from users.services.user_service import create_user
@@ -42,23 +40,13 @@ class HistoricalUserSerializer(serializers.ModelSerializer):
     history_user = serializers.StringRelatedField()
     history_type_display = serializers.CharField(source="get_history_type_display", read_only=True)
     changes = serializers.SerializerMethodField()
-    roles = serializers.SerializerMethodField()
 
     class Meta:
         model = User.history.model
         fields = [
             "history_id", "history_date", "history_type_display", "history_user", "changes",
-            "username", "email", "last_name", "roles", "is_active",
+            "username", "email", "last_name", "is_active",
         ]
-
-    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
-    def get_roles(self, obj):
-        if not obj.history_change_reason:
-            return []
-        try:
-            return json.loads(obj.history_change_reason).get("roles", [])
-        except (json.JSONDecodeError, TypeError):
-            return []
 
     @extend_schema_field(serializers.ListField(child=serializers.DictField()))
     def get_changes(self, obj):

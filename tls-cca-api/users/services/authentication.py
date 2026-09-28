@@ -6,7 +6,7 @@ from django.utils import timezone
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from users.events import user_login_failed, user_login_succeeded
+from core.events import user_login_failed, user_login_succeeded
 from users.models import UserSecurityProfile
 
 MAX_FAILED_ATTEMPTS = 5
@@ -57,7 +57,7 @@ class AuthenticationService:
                 raise AuthenticationFailed("Account temporarily locked.")
             raise AuthenticationFailed("Invalid credentials.")
 
-        twofa_enabled = bool(profile.two_factor_enabled or user.is_2fa_enabled)
+        twofa_enabled = profile.two_factor_enabled
         if twofa_enabled:
             challenge, expires_at = TwoFAService().create_login_challenge(user)
             user_login_succeeded.send(sender=user.__class__, user=user, request=request, requires_2fa=True)

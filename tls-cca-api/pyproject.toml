@@ -27,6 +27,7 @@ pyotp = "^2.10.0"
 qrcode = {extras = ["pil"], version = "^8.2"}
 python-dateutil = "^2.9.0.post0"
 cryptography = "^50.0.1"
+django-cors-headers = "^4.9.0"
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"

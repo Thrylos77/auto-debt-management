@@ -29,7 +29,14 @@ class CreditSaleSerializer(serializers.ModelSerializer):
             'status', 
             'proof_doc'
         ]
-        read_only_fields = ('sale_date', 'commercial_name', 'commercial', 'portfolio_name')
+        read_only_fields = (
+            'sale_date',
+            'commercial_name',
+            'commercial',
+            'portfolio',
+            'portfolio_name',
+            'status',
+        )
 
     def create(self, validated_data):
         # Automatically set the commercial to the user making the request

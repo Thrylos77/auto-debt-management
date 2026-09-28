@@ -3,11 +3,14 @@
 from __future__ import annotations # For compatibility with type hints
 from typing import TYPE_CHECKING, List, Optional
 
+from core.events import portfolio_assigned, portfolio_created, portfolio_transferred
 from django.db import transaction
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import ValidationError
 
 from crm.models import Portfolio, PortfolioTransfer
+from crm.policies.portfolio_policy import PortfolioPolicy
+from rbac.services.permission_resolver import PermissionResolver
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser as UserType
@@ -42,7 +45,12 @@ def create_portfolio_for_commercial(commercial: UserType, description: str = Non
     portfolio = Portfolio.objects.create(
         ref=ref,
         commercial=commercial,
-        description=description
+        description=description,
+    )
+    portfolio_created.send(
+        sender=Portfolio,
+        portfolio=portfolio,
+        actor=commercial,
     )
     return portfolio
 
@@ -53,6 +61,7 @@ def assign_portfolio(
     to_commercial: UserType,
     transferred_by: Optional[UserType] = None,
     reason: str = None,
+    required_permission: str = "portfolio.assign",
 ) -> Portfolio:
     """
     Assigns an existing portfolio to a target commercial.
@@ -63,6 +72,20 @@ def assign_portfolio(
     - The portfolio is marked active.
     - A `PortfolioTransfer` journal entry is recorded (from/to/reason/actor/date).
     """
+    if transferred_by is not None and not transferred_by.is_superuser:
+        from rest_framework.exceptions import PermissionDenied
+
+        if not PermissionResolver.has(transferred_by, required_permission):
+            raise PermissionDenied("You do not have permission to modify this portfolio.")
+
+    if not PortfolioPolicy.can_assign(
+        transferred_by,
+        portfolio,
+        to_commercial,
+        permission_code=required_permission,
+    ):
+        raise ValidationError("The portfolio assignment violates its business policy.")
+
     if to_commercial is None:
         raise ValidationError("A target commercial is required to assign a portfolio.")
     if not to_commercial.is_active:
@@ -93,6 +116,14 @@ def assign_portfolio(
         transferred_by=transferred_by,
         reason=reason,
     )
+    portfolio_assigned.send(
+        sender=Portfolio,
+        portfolio=portfolio,
+        actor=transferred_by,
+        from_commercial=from_commercial,
+        to_commercial=to_commercial,
+        reason=reason,
+    )
     return portfolio
 
 
@@ -109,12 +140,21 @@ def transfer_portfolio(
     Used for the "leaving commercial" scenario where a portfolio must be
     handed over to another commercial. Delegates to :func:`assign_portfolio`.
     """
-    return assign_portfolio(
+    result = assign_portfolio(
         portfolio,
         to_commercial,
         transferred_by=transferred_by,
         reason=reason,
+        required_permission="portfolio.transfer",
     )
+    portfolio_transferred.send(
+        sender=Portfolio,
+        portfolio=result,
+        actor=transferred_by,
+        to_commercial=to_commercial,
+        reason=reason or "Portfolio transferred",
+    )
+    return result
 
 
 @transaction.atomic
@@ -151,6 +191,7 @@ def transfer_active_portfolios_of_commercial(
                 to_commercial,
                 transferred_by=transferred_by,
                 reason=reason,
+                required_permission="portfolio.transfer",
             )
         )
     return transferred

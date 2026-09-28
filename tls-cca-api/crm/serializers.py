@@ -20,7 +20,15 @@ class PortfolioSerializer(serializers.ModelSerializer):
             'id', 'ref', 'commercial', 'commercial_name', 'description', 
             'balance', 'active', 'created_at', 'last_transfer_date'
         ]
-        read_only_fields = ('ref', 'active', 'balance', 'created_at', 'commercial_name', 'last_transfer_date')
+        read_only_fields = (
+            'ref',
+            'commercial',
+            'active',
+            'balance',
+            'created_at',
+            'commercial_name',
+            'last_transfer_date',
+        )
 
 
 class CustomerDeactivationPolicySerializer(serializers.Serializer):
@@ -127,7 +135,7 @@ class CustomerSerializer(serializers.ModelSerializer):
             'id', 'display_name', 'customer_type', 'portfolio', 'email', 'phone', 
             'mobile', 'address', 'is_active', 'created_at', 'physical_detail', 'moral_detail'
         ]
-        read_only_fields = ('created_at', 'portfolio', 'display_name')
+        read_only_fields = ('created_at', 'portfolio', 'is_active', 'display_name')
 
     def validate(self, data):
         customer_type = data.get('customer_type')
@@ -148,11 +156,20 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         # Delegate creation to the customer service
-        return services.create_customer(validated_data)
+        return services.create_customer(
+            validated_data,
+            creator=self.context.get("request").user if self.context.get("request") else None,
+            request=self.context.get("request"),
+        )
 
     def update(self, instance, validated_data):
         # Delegate update to the customer service
-        return services.update_customer(instance, validated_data)
+        return services.update_customer(
+            instance,
+            validated_data,
+            actor=self.context.get("request").user if self.context.get("request") else None,
+            request=self.context.get("request"),
+        )
 
 class HistoricalCustomerSerializer(serializers.ModelSerializer, HistoricalChangesMixin):
     """

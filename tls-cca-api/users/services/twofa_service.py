@@ -13,7 +13,12 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
-from users.events import user_twofa_disabled, user_twofa_enabled, user_twofa_failure, user_twofa_success
+from core.events import (
+    user_twofa_disabled,
+    user_twofa_enabled,
+    user_twofa_failure,
+    user_twofa_success,
+)
 from users.models import RecoveryCode, TwoFAChallenge, TwoFASetup, UserSecurityProfile
 
 SETUP_LIFETIME_MINUTES = 10
@@ -72,7 +77,7 @@ class TwoFAService:
     @transaction.atomic
     def setup(self, user):
         profile = self._profile(user)
-        if profile.two_factor_enabled or user.is_2fa_enabled:
+        if profile.two_factor_enabled:
             raise ValidationError({"detail": "2FA is already enabled."})
 
         TwoFASetup.objects.filter(user=user, used_at__isnull=True).update(used_at=timezone.now())
@@ -125,10 +130,6 @@ class TwoFAService:
                 profile.last_security_event_at = timezone.now()
                 profile.save(update_fields=["two_factor_enabled", "totp_secret_encrypted", "last_security_event_at"])
 
-                user.is_2fa_enabled = True
-                user.totp_secret = None
-                user.save(update_fields=["totp_secret", "is_2fa_enabled"])
-
                 setup.used_at = timezone.now()
                 setup.save(update_fields=["used_at"])
                 recovery_codes = self.generate_recovery_codes(user)
@@ -173,7 +174,7 @@ class TwoFAService:
 
             user = challenge.user
             profile = self._profile(user)
-            secret = decrypt_secret(profile.totp_secret_encrypted) if profile.totp_secret_encrypted else user.totp_secret
+            secret = decrypt_secret(profile.totp_secret_encrypted)
             valid = verify_totp_code(secret, code_or_recovery)
             if not valid:
                 recovery = (
@@ -213,9 +214,6 @@ class TwoFAService:
         profile.totp_secret_encrypted = None
         profile.last_security_event_at = timezone.now()
         profile.save(update_fields=["two_factor_enabled", "totp_secret_encrypted", "last_security_event_at"])
-        user.totp_secret = None
-        user.is_2fa_enabled = False
-        user.save(update_fields=["totp_secret", "is_2fa_enabled"])
         TwoFAChallenge.objects.filter(user=user, used_at__isnull=True).update(used_at=timezone.now())
         TwoFASetup.objects.filter(user=user, used_at__isnull=True).update(used_at=timezone.now())
         RecoveryCode.objects.filter(user=user, revoked_at__isnull=True).update(revoked_at=timezone.now())
@@ -233,11 +231,4 @@ class TwoFAService:
     @staticmethod
     def _profile(user):
         profile, _ = UserSecurityProfile.objects.get_or_create(user=user)
-        if profile.totp_secret_encrypted is None and getattr(user, "totp_secret", None):
-            profile.totp_secret_encrypted = encrypt_secret(user.totp_secret)
-            profile.two_factor_enabled = bool(user.is_2fa_enabled)
-            profile.last_security_event_at = timezone.now()
-            profile.save(update_fields=["totp_secret_encrypted", "two_factor_enabled", "last_security_event_at"])
-            user.totp_secret = None
-            user.save(update_fields=["totp_secret"])
         return profile

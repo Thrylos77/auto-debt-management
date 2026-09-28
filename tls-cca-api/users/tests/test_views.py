@@ -47,8 +47,8 @@ class TestAuthViews:
         assert User.objects.filter(username='newuser').exists()
 
     def test_login_user(self, api_client, user):
-        url = reverse('token_obtain_pair')
-        data = {'username': user.username, 'password': 'password123'}
+        url = reverse('auth-login')
+        data = {'identifier': user.username, 'password': 'password123'}
         response = api_client.post(url, data)
         assert response.status_code == 200
         assert 'access' in response.data
@@ -98,19 +98,38 @@ class TestUserViews:
         user.refresh_from_db()
         assert user.is_active is False
 
-    # Reactivate logic removed from GenericView as @action is not supported
-    # def test_reactivate_user_as_superuser(self, api_client, superuser, user):
-    #     user.is_active = False
-    #     user.save()
-    #     url = reverse('user-rud', kwargs={'pk': user.pk}) + 'reactivate/'
-    #     api_client.force_authenticate(user=superuser)
-    #     response = api_client.post(url)
-    #     # It seems there is an issue with the url resolving, let's try the other way
-    #     url = f'/api/users/{user.pk}/reactivate/'
-    #     response = api_client.post(url)
-    #     assert response.status_code == 200
-    #     user.refresh_from_db()
-    #     assert user.is_active is True
+    def test_deactivate_user_uses_dedicated_permission(self, api_client, user, user_factory):
+        from rbac.models import Permission, Role, RoleAssignment
+
+        actor = user_factory.create(username="deactivate-actor", email="deactivate-actor@example.com")
+        permission = Permission.objects.create(
+            code="user.deactivate",
+            label="Deactivate user",
+        )
+        role = Role.objects.create(name="deactivate-actor-role")
+        role.permissions.add(permission)
+        RoleAssignment.objects.create(user=actor, role=role)
+
+        api_client.force_authenticate(user=actor)
+        response = api_client.delete(reverse("user-rud", kwargs={"pk": user.pk}))
+
+        assert response.status_code == 204
+        user.refresh_from_db()
+        assert user.is_active is False
+
+    def test_deactivate_user_denied_without_dedicated_permission(self, api_client, user, user_factory):
+        actor = user_factory.create(
+            username="deactivate-denied",
+            email="deactivate-denied@example.com",
+        )
+
+        api_client.force_authenticate(user=actor)
+        response = api_client.delete(reverse("user-rud", kwargs={"pk": user.pk}))
+
+        assert response.status_code == 403
+        user.refresh_from_db()
+        assert user.is_active is True
+
 
 @pytest.mark.django_db
 class TestPasswordViews:
@@ -119,7 +138,7 @@ class TestPasswordViews:
         user.is_superuser = True
         user.save()
         
-        url = reverse('change-own-password')
+        url = reverse('password-change-self')
         api_client.force_authenticate(user=user)
         data = {
             'old_password': 'password123',
@@ -132,7 +151,7 @@ class TestPasswordViews:
         assert user.check_password('NewPassword123!')
 
     def test_admin_change_password(self, api_client, superuser, user):
-        url = reverse('change-password', kwargs={'pk': user.pk})
+        url = reverse('password-force-reset', kwargs={'pk': user.pk})
         api_client.force_authenticate(user=superuser)
         data = {
             'new_password': 'NewAdminPass123!',
@@ -143,7 +162,7 @@ class TestPasswordViews:
         assert user.check_password('NewAdminPass123!')
 
     def test_request_otp(self, api_client, user):
-        url = reverse('request-otp')
+        url = reverse('auth-password-forgot')
         data = {'email': user.email}
         response = api_client.post(url, data)
 
@@ -166,7 +185,7 @@ class TestPasswordViews:
             code_hash=make_password('654321'),
             expires_at=timezone.now() + timedelta(minutes=OTP.EXPIRATION_MINUTES),
         )
-        url = reverse('reset-password')
+        url = reverse('auth-password-reset')
         data = {
             'email': user.email,
             'otp': '654321',

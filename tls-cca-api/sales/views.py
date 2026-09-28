@@ -54,7 +54,7 @@ class CreditSaleViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
         Lists all credit sales without restriction (Admin/Consultant view).
         Supports filtering.
         """
-        queryset = CreditSale.objects.all()
+        queryset = CreditSale.objects.all().order_by("id")
         queryset = self.filter_queryset(queryset)
 
         page = self.paginate_queryset(queryset)
@@ -70,6 +70,6 @@ class CreditSaleHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSe
     """
     
     """
-    queryset = CreditSale.history.all()
+    queryset = CreditSale.history.none()
     resource = "creditsale_history"
     serializer_class = HistoricalCreditSaleSerializer

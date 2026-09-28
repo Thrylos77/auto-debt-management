@@ -27,9 +27,6 @@ Run-Step "Application des migrations" {
 Run-Step "Verification absence de migration manquante" { 
     poetry run python manage.py makemigrations --check --dry-run 
 }
-Run-Step "Backfill RBAC legacy vers V2" { 
-    poetry run python manage.py backfill_legacy_rbac 
-}
 Run-Step "Apercu synchronisation RBAC (DRY-RUN)" { 
     poetry run python manage.py sync_rbac --dry-run --strict 
 }

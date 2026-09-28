@@ -1,5 +1,6 @@
 """ sales/services/creditsale_services.py """
 
+from core.events import credit_sale_status_changed
 from rbac.services.permission_resolver import PermissionResolver
 
 from django.db import transaction
@@ -9,6 +10,7 @@ from rest_framework.exceptions import PermissionDenied
 from sales.models import CreditSale, CreditSaleStatus
 from receivables.models import Debt, DebtStatus
 from receivables.services import term_services
+from sales.policies.credit_sale_policy import CreditSalePolicy
 
 def update_credit_sale_status(sale, new_status, user=None):
     """
@@ -19,12 +21,15 @@ def update_credit_sale_status(sale, new_status, user=None):
     cannot approve or reject their own sale (unless the actor is a superuser).
     Cancelling one's own sale remains allowed.
     """
-    actor = user if user is not None and not getattr(user, 'is_superuser', False) else None
-    if actor is not None and new_status in (CreditSaleStatus.APPROVED, CreditSaleStatus.REJECTED):
-        if sale.commercial_id == actor.id:
-            raise PermissionDenied(
-                _("A commercial cannot approve or reject their own sale.")
-            )
+    actor = user if user is not None else None
+    if actor is not None and not CreditSalePolicy.can_change_status(
+        actor,
+        sale,
+        new_status,
+    ):
+        raise PermissionDenied(
+            _("You do not have permission to change this sale status."),
+        )
 
     # If transitioning to APPROVED, create the Debt if it doesn't exist
     if new_status == CreditSaleStatus.APPROVED and sale.status != CreditSaleStatus.APPROVED:
@@ -45,8 +50,17 @@ def update_credit_sale_status(sale, new_status, user=None):
                     debt.monthly_payment = monthly_payment
                     debt.save(update_fields=['monthly_payment'])
 
+    previous_status = sale.status
     sale.status = new_status
     sale.save()
+    if previous_status != new_status:
+        credit_sale_status_changed.send(
+            sender=CreditSale,
+            sale=sale,
+            actor=actor,
+            previous_status=previous_status,
+            new_status=new_status,
+        )
     return sale
 
 def get_sales_for_user(user):

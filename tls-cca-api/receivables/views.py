@@ -87,24 +87,34 @@ class DebtHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet):
     """
     Read-only ViewSet for viewing debt history (audit trail).
     """
-    queryset = Debt.history.all()
+    queryset = Debt.history.none()
     resource = "debt_history"
     serializer_class = HistoricalDebtSerializer
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return self.queryset
+        return Debt.history.all().order_by("-history_date")
 
 @extend_schema(tags=["Terms"])
 class TermHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet):
     """
     Read-only ViewSet for viewing term history (audit trail).
     """
-    queryset = Term.history.all()
+    queryset = Term.history.none()
     resource = "term_history"
     serializer_class = HistoricalTermSerializer
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return self.queryset
+        return Term.history.all().order_by("-history_date")
 
 @extend_schema(tags=["Recoveries"])
 class RecoveryHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet):
     """
     Read-only ViewSet for viewing recovery history (audit trail).
     """
-    queryset = Recovery.history.all()
+    queryset = Recovery.history.none()
     resource = "recovery_history"
     serializer_class = HistoricalRecoverySerializer

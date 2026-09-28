@@ -37,17 +37,20 @@ def test_config_v1_urls_only_points_to_users_urls_package():
     assert "users.auth_urls" not in included_urlconfs
 
 
-def test_legacy_compatibility_names_resolve_only_to_legacy_routes():
-    assert reverse("token_obtain_pair") == "/api/users/token/login/"
-    assert reverse("change-own-password") == "/api/users/change-own-password/"
-    assert reverse(
+
+def test_legacy_url_names_are_removed():
+    """The final API surface must not expose pre-v1 named routes."""
+    from django.urls import NoReverseMatch
+
+    legacy_names = {
+        "token_obtain_pair",
+        "change-own-password",
         "change-password",
-        kwargs={"pk": 1},
-    ) == "/api/users/change-password/1/"
-    assert reverse("request-otp") == "/api/users/request-otp/"
-    assert reverse("reset-password") == "/api/users/reset-password/"
+        "request-otp",
+        "reset-password",
+        "legacy-user-list",
+    }
 
-
-def test_legacy_user_names_do_not_shadow_canonical_v1_names():
-    assert reverse("legacy-user-list") == "/api/users/"
-    assert reverse("user-list") == "/api/v1/users/"
+    for name in legacy_names:
+        with pytest.raises(NoReverseMatch):
+            reverse(name, kwargs={"pk": 1} if name == "change-password" else None)

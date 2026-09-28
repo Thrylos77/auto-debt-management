@@ -10,7 +10,7 @@ from core.throttling import LoginRateThrottle, TwoFARateThrottle
 from users.serializers.auth import Login2FASerializer, LoginSerializer, LogoutSerializer
 from users.services.authentication import AuthenticationService
 from users.services.session_service import SessionService
-from users.events import user_logout
+from core.events import user_logout
 
 
 @extend_schema(tags=["Authentication"])
@@ -103,17 +103,6 @@ class RefreshView(TokenRefreshView):
                 session.save(update_fields=["token_family"])
             response.data["session_id"] = str(session.id)
         return response
-
-
-class LegacyTokenObtainPairView(LoginView):
-    """Compatibility adapter for the old ``username/password`` login contract."""
-    def post(self, request, *args, **kwargs):
-        identifier = request.data.get("identifier", request.data.get("username", ""))
-        password = request.data.get("password", "")
-        serializer = LoginSerializer(data={"identifier": identifier, "password": password})
-        serializer.is_valid(raise_exception=True)
-        result = AuthenticationService().login(identifier=identifier, password=password, request=request)
-        return Response(result, status=status.HTTP_200_OK)
 
 
 class VerifyTokenView(TokenVerifyView):

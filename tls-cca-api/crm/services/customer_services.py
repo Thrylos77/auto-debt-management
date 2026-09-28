@@ -1,5 +1,11 @@
 """ crm/services/customer_services.py """
 
+from core.events import (
+    customer_activated,
+    customer_created,
+    customer_deactivated,
+    customer_updated,
+)
 from rbac.services.permission_resolver import PermissionResolver
 
 from django.db import transaction, models
@@ -12,7 +18,7 @@ from receivables.models import Debt
 from .inactivity_policy import get_customer_inactivity_threshold
 
 
-def create_customer(validated_data: dict, creator=None) -> Customer:
+def create_customer(validated_data: dict, creator=None, request=None) -> Customer:
     """
     Creates a Customer with its corresponding physical or moral details.
     Runs within a transaction to ensure data integrity.
@@ -34,12 +40,24 @@ def create_customer(validated_data: dict, creator=None) -> Customer:
             PhysicalPersonDetail.objects.create(customer=customer, **physical_detail_data)
         elif customer.customer_type == Customer.TYPE_MORAL and moral_detail_data:
             MoralPersonDetail.objects.create(customer=customer, **moral_detail_data)
-                
+
+        customer_created.send(
+            sender=Customer,
+            customer=customer,
+            actor=creator,
+            request=request,
+        )
         return customer
 
 
 @transaction.atomic
-def update_customer(instance: Customer, validated_data: dict) -> Customer:
+def update_customer(
+    instance: Customer,
+    validated_data: dict,
+    *,
+    actor=None,
+    request=None,
+) -> Customer:
     """
     Updates a Customer and its nested details.
     Handles the complexity of switching customer_type.
@@ -60,23 +78,44 @@ def update_customer(instance: Customer, validated_data: dict) -> Customer:
     if instance.customer_type == Customer.TYPE_PHYSICAL and physical_detail_data:
         PhysicalPersonDetail.objects.update_or_create(customer=instance, defaults=physical_detail_data)
     elif instance.customer_type == Customer.TYPE_MORAL and moral_detail_data:
-        MoralPersonDetail.objects.update_or_create(customer=instance, defaults=moral_detail_data)
+        MoralPersonDetail.objects.update_or_create(
+            customer=instance,
+            defaults=moral_detail_data,
+        )
 
+    customer_updated.send(
+        sender=Customer,
+        customer=instance,
+        actor=actor,
+        request=request,
+    )
     return instance
 
 
-def activate_customer(customer: Customer) -> Customer:
-    """ Set customer as active """
+def activate_customer(customer: Customer, *, actor=None, request=None) -> Customer:
+    """Set customer as active."""
     if not customer.is_active:
         customer.is_active = True
         customer.save(update_fields=['is_active'])
+        customer_activated.send(
+            sender=Customer,
+            customer=customer,
+            actor=actor,
+            request=request,
+        )
     return customer
 
-def deactivate_customer(customer: Customer) -> Customer:
-    """ Set customer as inactive """
+def deactivate_customer(customer: Customer, *, actor=None, request=None) -> Customer:
+    """Set customer as inactive."""
     if customer.is_active:
         customer.is_active = False
-        customer.save(update_fields=['is_active'])
+        customer.save(update_fields=["is_active"])
+        customer_deactivated.send(
+            sender=Customer,
+            customer=customer,
+            actor=actor,
+            request=request,
+        )
     return customer
 
 def auto_deactivate_inactive_customers() -> tuple[int, int]:

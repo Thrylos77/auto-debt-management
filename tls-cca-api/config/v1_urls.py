@@ -1,9 +1,9 @@
-"""config/v1_urls.py"""
 from django.urls import include, path
 
 
 urlpatterns = [
-    # The complete Users URL tree is aggregated by users.urls.
+    # Global dashboard/search endpoints are now owned by reporting.
+    path("", include("reporting.root_urls")),
     path("", include("users.urls")),
     path("rbac/", include("rbac.urls")),
     path("audit/", include("audit.urls")),

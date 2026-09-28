@@ -62,9 +62,6 @@ def test_2fa_login_does_not_issue_access_token_at_first_step():
     secret = "JBSWY3DPEHPK3PXP"
     profile.totp_secret_encrypted = encrypt_secret(secret)
     profile.save(update_fields=["two_factor_enabled", "totp_secret_encrypted"])
-    user.is_2fa_enabled = True
-    user.totp_secret = None
-    user.save(update_fields=["is_2fa_enabled", "totp_secret"])
 
     response = APIClient().post(
         reverse("auth-login"),

@@ -61,3 +61,39 @@ def test_denied_role_assignment_is_audited():
     with pytest.raises(PermissionError):
         assign_role(actor=actor, user=target, role=role)
     assert AuditEvent.objects.filter(action="role.assign", status="denied", actor_user=actor).exists()
+
+
+@pytest.mark.django_db
+def test_permission_resolver_uses_only_canonical_assignments():
+    from django.contrib.auth import get_user_model
+    from rbac.models import Group, GroupMembership, Permission, Role, RoleAssignment
+    from rbac.services.permission_resolver import PermissionResolver
+
+    User = get_user_model()
+    user = User.objects.create_user(
+        username="canonical-rbac",
+        email="canonical-rbac@example.com",
+        password="x",
+    )
+    direct_permission = Permission.objects.create(
+        code="customer.view",
+        label="customer.view",
+    )
+    group_permission = Permission.objects.create(
+        code="portfolio.view",
+        label="portfolio.view",
+    )
+    direct_role = Role.objects.create(name="DIRECT_CANONICAL")
+    direct_role.permissions.add(direct_permission)
+    group_role = Role.objects.create(name="GROUP_CANONICAL")
+    group_role.permissions.add(group_permission)
+    group = Group.objects.create(name="GROUP_CANONICAL")
+    group.roles.add(group_role)
+
+    RoleAssignment.objects.create(user=user, role=direct_role)
+    GroupMembership.objects.create(user=user, group=group)
+
+    assert PermissionResolver.get_codes(user) == {
+        "customer.view",
+        "portfolio.view",
+    }

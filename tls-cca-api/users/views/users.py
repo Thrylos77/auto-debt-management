@@ -52,6 +52,9 @@ class UserRetrieveUpdateDestroyView(AutoPermissionMixin, generics.RetrieveUpdate
     queryset = User.objects.all()
     serializer_class = UserSerializer
     resource = "user"
+    # GenericAPIView exposes the action as the HTTP method; keep the
+    # explicit CRUD key as well for compatibility with DRF viewsets.
+    permission_code_map = {"destroy": "deactivate", "DELETE": "deactivate"}
 
     def perform_update(self, serializer):
         target = self.get_object()
@@ -62,7 +65,7 @@ class UserRetrieveUpdateDestroyView(AutoPermissionMixin, generics.RetrieveUpdate
 
     def destroy(self, request, *args, **kwargs):
         target = self.get_object()
-        successor_id = request.data.get("successor_user_id", request.data.get("transfer_to"))
+        successor_id = request.data.get("successor_user_id")
         successor = None
         if successor_id:
             successor = get_object_or_404(User, pk=successor_id)

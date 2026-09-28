@@ -7,11 +7,10 @@ from .models import RecoveryCode, TwoFAChallenge, TwoFASetup, User, UserPreferen
 
 @admin.register(User)
 class CustomUserAdmin(SimpleHistoryAdmin, UserAdmin):
-    list_display = ("username", "email", "first_name", "last_name", "is_active", "is_staff", "is_2fa_enabled")
+    list_display = ("username", "email", "first_name", "last_name", "is_active", "is_staff")
     search_fields = ("username", "email", "first_name", "last_name")
     fieldsets = UserAdmin.fieldsets + (
         ("Identity", {"fields": ("phone", "address", "birthday")}),
-        ("Legacy migration", {"fields": ("roles", "totp_secret", "is_2fa_enabled")}),
     )
 
 

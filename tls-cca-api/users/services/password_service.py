@@ -3,7 +3,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
-from users.events import user_password_changed
+from core.events import user_password_changed
 from users.models import UserSecurityProfile
 
 

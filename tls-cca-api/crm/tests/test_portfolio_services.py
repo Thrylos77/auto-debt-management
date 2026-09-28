@@ -1,6 +1,7 @@
 """crm/tests/test_portfolio_services.py"""
 import pytest
 from django.contrib.auth import get_user_model
+from rbac.models import Permission, Role, RoleAssignment
 from rest_framework.exceptions import ValidationError
 
 from crm.models import Portfolio, PortfolioTransfer
@@ -23,9 +24,17 @@ def commercial(db):
 
 @pytest.fixture
 def target(db):
-    return User.objects.create_user(
+    user = User.objects.create_user(
         username='commercial2', email='commercial2@example.com', password='x', is_active=True
     )
+    role, _ = Role.objects.get_or_create(name="PORTFOLIO_TEST_TARGET")
+    permission, _ = Permission.objects.get_or_create(
+        code="portfolio.assign",
+        label="portfolio.assign",
+    )
+    role.permissions.add(permission)
+    RoleAssignment.objects.create(user=user, role=role)
+    return user
 
 
 @pytest.fixture

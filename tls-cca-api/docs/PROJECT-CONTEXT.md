@@ -52,7 +52,7 @@ Le contexte métier (« concession auto ») distingue principalement :
 Le RBAC est modulaire (`rbac` app) : un **rôle** (`Role`) regroupe des
 **permissions** (`Permission`, format `resource.action`) ; un **groupe** (`Group`)
 regroupe des rôles. La configuration de référence est dans
-`rbac/fixtures/permissions_config.json` (seed via `python manage.py seed_rbac_v2`).
+`rbac/fixtures/permissions_config.json` (synchronisé via `python manage.py sync_rbac --strict`).
 
 Rôles définis :
 
@@ -82,17 +82,17 @@ Permissions couvertes (extrait) : `user.*`, `user_history.*`, `permission.*`,
 
 ### Utilisateurs & Authentification (`users` app)
 
-- Inscription (`/api/users/register/`), connexion JWT (`/api/token/login/`),
-  rafraîchissement (`refresh`), vérification (`verify`), déconnexion avec
-  blacklist du refresh token (`/api/token/logout/`).
-- Profil (`/api/users/me/`), gestion des utilisateurs (`/api/users/`),
-  réactivation (`/api/users/{id}/reactivate/`).
+- Inscription (`/api/v1/users/register/`), connexion JWT (`/api/v1/auth/login/`),
+  rafraîchissement (`/api/v1/auth/refresh/`), vérification (`/api/v1/auth/verify/`),
+  déconnexion avec blacklist du refresh token (`/api/v1/auth/logout/`).
+- Profil (`/api/v1/users/me/`), gestion des utilisateurs (`/api/v1/users/`),
+  réactivation (`/api/v1/users/{id}/reactivate/`).
 - **Soft delete** : la suppression d'un utilisateur le **désactive**
   (`is_active=False`) plutôt que de le détruire — l'historique est conservé.
 - Réinitialisation de mot de passe par **OTP** (e-mail) et gestion des mots de
   passe (propre / par un admin).
 - **2FA / TOTP** (Google Authenticator) : activation, désactivation, login 2 étapes.
-- Historique complet des utilisateurs (`/api/users/history/`) via `django-simple-history`.
+- Historique complet des utilisateurs (`/api/v1/users/history/`) via `django-simple-history`.
 
 ### RBAC (`rbac` app)
 
@@ -116,7 +116,7 @@ Permissions couvertes (extrait) : `user.*`, `user_history.*`, `permission.*`,
 - **Transfert du portefeuille d'un commercial sortant** :
   `POST /api/portfolios/{id}/transfer/` avec `{ "to_commercial": <id>, "reason": "..." }`,
   ainsi qu'un transfert de masse (tous les portefeuilles **actifs** d'un commercial)
-  déclenché à la désactivation d'un utilisateur (`soft_delete_user(..., transfer_to=...)`).
+  déclenché à la désactivation d'un utilisateur (`deactivate_user(..., successor_user=...)`).
 - **Journalisation** : chaque assignation/transfert est tracé dans
   `PortfolioTransfer` (`from_commercial`, `to_commercial`, `transferred_by`,
   `reason`, `transferred_at`) — consultable via `/api/portfolio-transfers/`.
@@ -143,11 +143,11 @@ Permissions couvertes (extrait) : `user.*`, `user_history.*`, `permission.*`,
 ### Reporting (`reporting` app)
 
 - Tableau de bord global (KPIs), **Aging** (balance par ancienneté) et **évolution**
-  du recouvrement. Statistiques et recherches génériques dans `core`.
+  du recouvrement. Statistiques et recherches génériques dans `reporting`.
 
 ### Documentation API
 
-- Swagger UI : `/api/docs/` | Redoc : `/api/schema/redoc/`
+- Swagger UI : `/api/docs/` | Schéma OpenAPI : `/api/schema/`
 - Schéma OpenAPI : `/api/schema/` (via `drf-spectacular`).
 
 ---
@@ -159,7 +159,7 @@ Permissions couvertes (extrait) : `user.*`, `user_history.*`, `permission.*`,
   avant désactivation.
 - **Désactivation automatique** des clients : la durée d'inactivité (en **mois**)
   est **configurable par l'Administrateur** (`GET/PATCH
-  /api/crm/customers/deactivation-policy/`), par défaut **48 mois (4 ans)** ; un
+  /api/v1/crm/customers/deactivation-policy/`), par défaut **48 mois (4 ans)** ; un
   client est désactivé si sa dernière activité (vente, dette close ou création)
   est antérieure à ce seuil.
 - **Portefeuilles** : référence unique `PF-XXX` ; `on_delete=PROTECT` sur le
@@ -212,7 +212,7 @@ poetry install
 cp .env.example .env          # puis renseigner les variables
 poetry run python manage.py migrate
 poetry run python manage.py createsuperuser
-poetry run python manage.py seed_rbac_v2   # rôles & permissions (recommandé)
+poetry run python manage.py sync_rbac --strict   # rôles & permissions
 poetry run python manage.py runserver
 ```
 

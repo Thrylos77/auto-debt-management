@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 
 from crm.models import Portfolio
 from crm.services.portfolio_services import create_portfolio_for_commercial
-from users.services import user_services
+from users.services.user_service import deactivate_user
 
 User = get_user_model()
 
@@ -29,7 +29,7 @@ class TestSoftDeleteTransfersPortfolios:
         create_portfolio_for_commercial(leaving)
         create_portfolio_for_commercial(leaving)
 
-        user_services.soft_delete_user(leaving, transfer_to=successor, reason='Depart')
+        deactivate_user(leaving, successor_user=successor, reason="Depart")
 
         leaving.refresh_from_db()
         assert leaving.is_active is False
@@ -40,9 +40,22 @@ class TestSoftDeleteTransfersPortfolios:
     def test_deactivation_without_transfer_keeps_portfolios(self, leaving):
         create_portfolio_for_commercial(leaving)
 
-        user_services.soft_delete_user(leaving)
+        deactivate_user(leaving)
 
         leaving.refresh_from_db()
         assert leaving.is_active is False
         # No target given -> portfolios stay with the (now inactive) commercial
         assert Portfolio.objects.filter(commercial=leaving).count() == 1
+
+    def test_transfer_does_not_require_portfolio_permission(self, leaving, successor):
+        """Deactivation transfer is an internal consequence, not a user action."""
+
+        create_portfolio_for_commercial(leaving)
+
+        deactivate_user(
+            leaving,
+            successor_user=successor,
+            reason="Depart",
+        )
+
+        assert Portfolio.objects.filter(commercial=successor).count() == 1

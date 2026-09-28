@@ -1,6 +1,8 @@
 """ receivables/services/debt_services.py """
 
 from datetime import timedelta
+
+from core.events import debt_status_updated
 from django.utils import timezone
 from receivables.models import Debt, DebtStatus, Term, TermStatus
 
@@ -47,6 +49,12 @@ def update_financial_statuses():
                 debts_to_update.append(debt)
     
     if debts_to_update:
-        Debt.objects.bulk_update(debts_to_update, ['debt_status'])
-    
+        Debt.objects.bulk_update(debts_to_update, ["debt_status"])
+
+    debt_status_updated.send(
+        sender=Debt,
+        updated_debts=debts_to_update,
+        overdue_count=len(debts_to_update),
+    )
+
     return len(debts_to_update)

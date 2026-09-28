@@ -1,7 +1,7 @@
 """Authorization domain models.
 
-The User.roles/User.groups relations remain only as a migration compatibility
-layer; all new writes must use RoleAssignment/GroupMembership.
+User authorization is represented exclusively by RoleAssignment and
+GroupMembership.
 """
 
 from django.db import models

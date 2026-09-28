@@ -1,21 +1,19 @@
 # Vague 1 — Notes d'implémentation
 
-La Vague 1 introduit les frontières cibles sans suppression destructive des données historiques.
-
-## Compatibilité temporaire
-
-- `User.roles`, `User.groups`, `User.totp_secret` et `User.is_2fa_enabled` restent présents.
-- `users/services/user_services.py`, `otp_services.py` et `twofa_services.py` sont des wrappers de compatibilité.
-- `/api/users/` et les routes `/api/token/...` restent des alias vers les mêmes services.
-- Le transfert de portefeuille est désormais déclenché par le signal `users.events.user_deactivated`; `users` n'importe plus `crm`.
+La Vague 1 a introduit les frontières cibles de l'architecture. Les éléments
+de compatibilité décrits ci-dessous sont des notes historiques : ils ont été
+supprimés pendant la finalisation de la Vague 4 lorsque la migration vers les
+contrats canoniques a été considérée comme terminée.
 
 ## Baseline migrations
 
-L'archive initiale ne contenait aucune migration Django. Les changements de modèles de cette Vague 1 doivent être accompagnés de migrations initiales générées par `makemigrations` dans l'environnement Poetry du projet avant déploiement sur une base vierge. L'environnement d'analyse utilisé ici ne dispose pas des dépendances Django installées et n'a pas accès à l'index Python ; il est donc volontairement exclu de générer des migrations manuelles non vérifiées.
-
+L'archive de la Vague 1 ne contenait aucune migration Django. Les changements
+de modèles devaient être accompagnés de migrations générées dans l'environnement
+Poetry du projet avant déploiement sur une base vierge.
 
 ## Corrections de validation Django
 
-- `CustomUserAdmin` n'ordonne plus deux fois le champ `groups` dans ses `fieldsets`; le champ `groups` reste géré par `UserAdmin` pendant la période de compatibilité.
-- Les index de `TwoFASetup` et `TwoFAChallenge` utilisent des noms <= 30 caractères pour respecter la limite Django.
-- Tests dédiés ajoutés dans `users/tests/test_v1_identity.py` pour empêcher la réintroduction de ces deux problèmes.
+- `CustomUserAdmin` n'ordonne plus deux fois le champ `groups` dans ses `fieldsets`.
+- Les index de `TwoFASetup` et `TwoFAChallenge` utilisent des noms <= 30 caractères
+  pour respecter la limite Django.
+- Des tests dédiés couvrent ces régressions.

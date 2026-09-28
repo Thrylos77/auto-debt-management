@@ -1,23 +1,66 @@
-""" reporting/views.py """
+"""Reporting and platform-wide query views."""
 
-from rest_framework.views import APIView
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework import status, views, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema
 
 from rbac.policies.permission_policy import AutoPermissionMixin
-from .serializers import DashboardSummarySerializer, AgingReportSerializer, EvolutionPointSerializer
-from .services import reporting_services
+from reporting.serializers import (
+    AgingReportSerializer,
+    DashboardSummarySerializer,
+    EvolutionPointSerializer,
+    GlobalSearchResponseSerializer,
+)
+from reporting.services import reporting_services
+from reporting.services.dashboard_services import get_dashboard_stats
+from reporting.services.search_services import search_global
+
+
+@extend_schema(tags=["Dashboard"])
+class DashboardViewSet(AutoPermissionMixin, viewsets.ViewSet):
+    """Expose dashboard KPIs formerly owned by the core module."""
+
+    resource = "dashboard"
+    permission_code_map = {"summary": "summary"}
+
+    @extend_schema(responses={200: dict})
+    @action(detail=False, methods=["get"], url_path="summary")
+    def summary(self, request):
+        data = get_dashboard_stats(request.user)
+        return Response(data, status=status.HTTP_200_OK)
+
+
+@extend_schema(tags=["Search"])
+class GlobalSearchView(views.APIView):
+    """Federated search across customers, sales and receivables."""
+
+    serializer_class = GlobalSearchResponseSerializer
+
+    @extend_schema(
+        summary="Global search",
+        parameters=[
+            OpenApiParameter(
+                name="q",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Search text. At least two characters are required.",
+            ),
+        ],
+        responses=GlobalSearchResponseSerializer,
+    )
+    def get(self, request):
+        query = request.query_params.get("q", "").strip()
+        return Response(search_global(request.user, query))
+
 
 @extend_schema(tags=["Reporting"])
-class GlobalDashboardView(AutoPermissionMixin, APIView):
-    """
-    Provides high-level KPIs for the dashboard:
-    - Total Sales Volume
-    - Total Debt Initial Amount
-    - Current Total Balance (Outstanding)
-    - Total Recovered Amount
-    - Global Recovery Rate
-    """
+class GlobalDashboardView(AutoPermissionMixin, views.APIView):
+    """Provide unrestricted reporting KPIs for authorized reporting users."""
+
+    serializer_class = DashboardSummarySerializer
+
     resource = "reporting_dashboard"
 
     @extend_schema(responses=DashboardSummarySerializer)
@@ -26,17 +69,13 @@ class GlobalDashboardView(AutoPermissionMixin, APIView):
         serializer = DashboardSummarySerializer(data)
         return Response(serializer.data)
 
+
 @extend_schema(tags=["Reporting"])
-class AgingBalanceView(AutoPermissionMixin, APIView):
-    """
-    Generates the Aging Report (Balance Âgée).
-    Groups unpaid terms by overdue duration:
-    - Not Due (Future)
-    - 0-30 days overdue
-    - 30-60 days overdue
-    - 60-90 days overdue
-    - 90+ days overdue
-    """
+class AgingBalanceView(AutoPermissionMixin, views.APIView):
+    """Generate the receivables aging report."""
+
+    serializer_class = AgingReportSerializer
+
     resource = "reporting_aging"
 
     @extend_schema(responses=AgingReportSerializer)
@@ -44,11 +83,13 @@ class AgingBalanceView(AutoPermissionMixin, APIView):
         data = reporting_services.get_aging_balance_report()
         return Response(data)
 
+
 @extend_schema(tags=["Reporting"])
-class RecoveryEvolutionView(AutoPermissionMixin, APIView):
-    """
-    Shows the evolution of recoveries (cash collected) over time, grouped by month.
-    """
+class RecoveryEvolutionView(AutoPermissionMixin, views.APIView):
+    """Show monthly recovery evolution."""
+
+    serializer_class = EvolutionPointSerializer
+
     resource = "reporting_evolution"
 
     @extend_schema(responses=EvolutionPointSerializer(many=True))

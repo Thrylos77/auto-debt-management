@@ -3,7 +3,7 @@ import pytest
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
-from crm.models import Customer, PhysicalPersonDetail, PortfolioTransfer
+from crm.models import Customer, PhysicalPersonDetail, Portfolio, PortfolioTransfer
 from crm.services.portfolio_services import create_portfolio_for_commercial
 
 User = get_user_model()
@@ -73,6 +73,21 @@ class TestPortfolioViews:
     @pytest.fixture
     def portfolio(self, owner):
         return create_portfolio_for_commercial(owner)
+
+    def test_create_portfolio_uses_authenticated_user_as_owner(self, api_client, new_user):
+        api_client.force_authenticate(user=new_user)
+        response = api_client.post(
+            reverse("portfolio-list"),
+            {
+                "description": "Owned by actor",
+                "commercial": 999999,
+            },
+            format="json",
+        )
+
+        assert response.status_code == 201
+        portfolio = Portfolio.objects.get(pk=response.data["id"])
+        assert portfolio.commercial_id == new_user.id
 
     def test_assign_existing_portfolio(self, api_client, new_user, portfolio, target):
         api_client.force_authenticate(user=new_user)

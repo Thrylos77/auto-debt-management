@@ -69,7 +69,11 @@ class CustomerViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
         if customer.is_active:
             return Response({'status': 'Customer is already active'}, status=status.HTTP_400_BAD_REQUEST)
         
-        activate_customer(customer)
+        activate_customer(
+            customer,
+            actor=request.user,
+            request=request,
+        )
         return Response({'status': 'Customer activated'}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], url_path='deactivate')
@@ -81,7 +85,11 @@ class CustomerViewSet(AutoPermissionMixin, viewsets.ModelViewSet):
         if not customer.is_active:
             return Response({'status': 'Customer is already inactive'}, status=status.HTTP_400_BAD_REQUEST)
 
-        deactivate_customer(customer)
+        deactivate_customer(
+            customer,
+            actor=request.user,
+            request=request,
+        )
         return Response({'status': 'Customer deactivated'}, status=status.HTTP_200_OK)
 
 
@@ -195,6 +203,13 @@ class PortfolioViewSet(
     # (portfolio.assign / portfolio.transfer) defined in the RBAC permissions config.
     permission_code_map = {'assign': 'assign', 'transfer': 'transfer'}
 
+    def perform_create(self, serializer):
+        portfolio = portfolio_services.create_portfolio_for_commercial(
+            self.request.user,
+            description=serializer.validated_data.get("description", ""),
+        )
+        serializer.instance = portfolio
+
     @extend_schema(
         summary="Assign an existing portfolio to a commercial",
         description=(
@@ -254,8 +269,13 @@ class CustomerHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet)
     """
 
     """
-    queryset = Customer.history.all()
+    queryset = Customer.history.none()
     resource = "customer_history"
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return self.queryset
+        return Customer.history.all().order_by("-history_date")
     serializer_class = HistoricalCustomerSerializer
 
 @extend_schema(tags=["Portfolios"])
@@ -263,8 +283,13 @@ class PortfolioHistoryViewSet(AutoPermissionMixin, viewsets.ReadOnlyModelViewSet
     """
     
     """
-    queryset = Portfolio.history.all()
+    queryset = Portfolio.history.none()
     resource = "portfolio_history"
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return self.queryset
+        return Portfolio.history.all().order_by("-history_date")
     serializer_class = HistoricalPortfolioSerializer
 
 @extend_schema(tags=["Portfolios"])

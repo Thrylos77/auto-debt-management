@@ -1,17 +1,13 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from users.events import user_deactivated, user_reactivated
+from core.events import user_deactivated, user_reactivated
 
 User = get_user_model()
 
 
 @transaction.atomic
 def create_user(validated_data, *, actor=None):
-    # roles/groups are intentionally rejected from the public serializer; keep this
-    # guard for callers using the legacy service directly during migration.
-    validated_data.pop("roles", None)
-    validated_data.pop("groups", None)
     user = User.objects.create_user(**validated_data)
     return user
 
@@ -54,18 +50,3 @@ def get_accessible_users(actor):
     # CRM roles such as COMMERCIAL.
     return User.objects.all().order_by("id")
 
-
-# Compatibility aliases used by existing domain code.
-def soft_delete_user(user, transfer_to=None, reason=None, transferred_by=None):
-    return deactivate_user(
-        user,
-        successor_user=transfer_to,
-        reason=reason,
-        actor=transferred_by,
-    )
-
-
-def change_user_password(user, new_password, old_password=None):
-    from .password_service import PasswordService
-
-    return PasswordService().change_password(user, new_password, old_password=old_password)

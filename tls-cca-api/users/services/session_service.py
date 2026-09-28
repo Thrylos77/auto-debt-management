@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from audit.services import AuditService
 from users.models import UserSession
-from users.events import user_session_revoked
+from core.events import user_session_revoked
 
 
 class SessionService:

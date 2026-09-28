@@ -2,7 +2,7 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from audit.models import AuditEvent
-from users.events import user_login_failed, user_twofa_failure
+from core.events import user_login_failed, user_twofa_failure
 
 User = get_user_model()
 

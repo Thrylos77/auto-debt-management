@@ -1,4 +1,4 @@
-"""Canonical permission resolver with legacy transition compatibility."""
+"""Single canonical permission resolution point."""
 
 from django.db.models import Q
 
@@ -12,13 +12,10 @@ class PermissionResolver:
             return Permission.objects.none()
         if user.is_superuser:
             return Permission.objects.all()
-        # Keep legacy relations in the resolver until the data backfill and
-        # final removal migration have been verified in production.
+
         return Permission.objects.filter(
             Q(roles__assignments__user=user)
             | Q(roles__groups__memberships__user=user)
-            | Q(roles__users=user)
-            | Q(roles__groups__users=user)
         ).distinct()
 
     @classmethod

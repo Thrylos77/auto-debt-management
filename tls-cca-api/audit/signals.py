@@ -3,7 +3,17 @@
 from django.dispatch import receiver
 
 from audit.services import AuditService
-from users.events import (
+from core.events import (
+    credit_sale_status_changed,
+    customer_activated,
+    customer_created,
+    customer_deactivated,
+    customer_updated,
+    debt_status_updated,
+    portfolio_assigned,
+    portfolio_created,
+    portfolio_transferred,
+    recovery_created,
     user_deactivated,
     user_login_failed,
     user_login_succeeded,
@@ -229,4 +239,202 @@ def audit_reactivation(
         resource=user,
         status="success",
         request=request,
+    )
+
+
+@receiver(customer_created)
+def audit_customer_created(
+    sender,
+    customer,
+    actor=None,
+    request=None,
+    **kwargs,
+):
+    AuditService.record_on_commit(
+        actor=actor,
+        category="BUSINESS",
+        action="customer.create",
+        resource=customer,
+        status="success",
+        request=request,
+    )
+
+
+@receiver(customer_updated)
+def audit_customer_updated(
+    sender,
+    customer,
+    actor=None,
+    request=None,
+    **kwargs,
+):
+    AuditService.record_on_commit(
+        actor=actor,
+        category="BUSINESS",
+        action="customer.update",
+        resource=customer,
+        status="success",
+        request=request,
+    )
+
+
+@receiver(customer_activated)
+def audit_customer_activated(
+    sender,
+    customer,
+    actor=None,
+    request=None,
+    **kwargs,
+):
+    AuditService.record_on_commit(
+        actor=actor,
+        category="BUSINESS",
+        action="customer.activate",
+        resource=customer,
+        status="success",
+        request=request,
+    )
+
+
+@receiver(customer_deactivated)
+def audit_customer_deactivated(
+    sender,
+    customer,
+    actor=None,
+    request=None,
+    **kwargs,
+):
+    AuditService.record_on_commit(
+        actor=actor,
+        category="BUSINESS",
+        action="customer.deactivate",
+        resource=customer,
+        status="success",
+        request=request,
+    )
+
+
+@receiver(portfolio_created)
+def audit_portfolio_created(
+    sender,
+    portfolio,
+    actor=None,
+    **kwargs,
+):
+    AuditService.record(
+        actor=actor,
+        category="BUSINESS",
+        action="portfolio.create",
+        resource=portfolio,
+        status="success",
+    )
+
+
+@receiver(portfolio_assigned)
+def audit_portfolio_assigned(
+    sender,
+    portfolio,
+    actor=None,
+    from_commercial=None,
+    to_commercial=None,
+    reason=None,
+    **kwargs,
+):
+    AuditService.record(
+        actor=actor,
+        category="ADMINISTRATION",
+        action="portfolio.assign",
+        resource=portfolio,
+        status="success",
+        reason=reason or "",
+        metadata={
+            "from_commercial_id": getattr(from_commercial, "pk", None),
+            "to_commercial_id": getattr(to_commercial, "pk", None),
+        },
+    )
+
+
+@receiver(portfolio_transferred)
+def audit_portfolio_transferred(
+    sender,
+    portfolio,
+    actor=None,
+    to_commercial=None,
+    reason=None,
+    **kwargs,
+):
+    AuditService.record(
+        actor=actor,
+        category="ADMINISTRATION",
+        action="portfolio.transfer",
+        resource=portfolio,
+        status="success",
+        reason=reason or "",
+        metadata={
+            "to_commercial_id": getattr(to_commercial, "pk", None),
+        },
+    )
+
+
+@receiver(credit_sale_status_changed)
+def audit_credit_sale_status_changed(
+    sender,
+    sale,
+    actor=None,
+    previous_status="",
+    new_status="",
+    **kwargs,
+):
+    AuditService.record(
+        actor=actor,
+        category="BUSINESS",
+        action="creditsale.status_change",
+        resource=sale,
+        status="success",
+        metadata={
+            "previous_status": previous_status,
+            "new_status": new_status,
+        },
+    )
+
+
+@receiver(recovery_created)
+def audit_recovery_created(
+    sender,
+    recovery,
+    actor=None,
+    term=None,
+    debt=None,
+    **kwargs,
+):
+    AuditService.record(
+        actor=actor,
+        category="BUSINESS",
+        action="recovery.create",
+        resource=recovery,
+        status="success",
+        metadata={
+            "term_id": getattr(term, "pk", None),
+            "debt_id": getattr(debt, "pk", None),
+            "amount": str(getattr(recovery, "amount", "")),
+            "payment_mode": getattr(recovery, "payment_mode", ""),
+        },
+    )
+
+
+@receiver(debt_status_updated)
+def audit_debt_status_updated(
+    sender,
+    updated_debts=None,
+    overdue_count=0,
+    **kwargs,
+):
+    AuditService.record_on_commit(
+        category="SYSTEM",
+        action="debt.status_update",
+        status="success",
+        metadata={
+            "overdue_count": overdue_count,
+            "updated_count": len(updated_debts or []),
+        },
     )

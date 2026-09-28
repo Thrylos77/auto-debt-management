@@ -2,20 +2,24 @@
 
 from django.db import transaction
 from django.db.models import F
-from rest_framework.exceptions import ValidationError
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 
-from receivables.models import ( 
-        Recovery, Term, Debt, 
-        TermStatus, DebtStatus
-    )
+from core.events import recovery_created
 from crm.models import Portfolio
+from receivables.models import Debt, DebtStatus, Recovery, Term, TermStatus
+from receivables.policies.recovery_policy import RecoveryPolicy
 
 def create_recovery(commercial, term, amount, payment_mode, receipt=None):
     """
     Creates a recovery record and updates the related term and debt balances
     within a single atomic transaction.
     """
+    if not RecoveryPolicy.can_create(commercial):
+        from rest_framework.exceptions import PermissionDenied
+
+        raise PermissionDenied("You do not have permission to create a recovery.")
+
     if amount <= 0:
         raise ValidationError("Recovery amount must be positive.")
 
@@ -33,13 +37,20 @@ def create_recovery(commercial, term, amount, payment_mode, receipt=None):
         # 2. Update the paid amount on the related term
         Term.objects.filter(pk=term.id).update(pay_amount=F('pay_amount') + amount)
 
-        # 3. Re-fetch the debt to get its portfolio
-        debt = Debt.objects.select_related('sale__portfolio').get(pk=term.debt_id)
+        # 3. Lock the debt row before changing its balance.
+        #    Recovery uses django-simple-history on Debt, so saving an F()
+        #    expression directly would make the history insert fail.
+        debt = (
+            Debt.objects
+            .select_for_update()
+            .select_related('sale__portfolio')
+            .get(pk=term.debt_id)
+        )
 
-        # 4. Subtract the amount from the total debt balance
-        debt.balance = F('balance') - amount
+        # 4. Subtract the amount using a concrete Decimal value.
+        #    This keeps simple-history compatible with the model save.
+        debt.balance = debt.balance - amount
         debt.save(update_fields=['balance'])
-        debt.refresh_from_db() # Get the updated balance value
 
         # 5. Subtract the amount from the portfolio balance, if it exists
         if debt.sale and debt.sale.portfolio:
@@ -71,6 +82,14 @@ def create_recovery(commercial, term, amount, payment_mode, receipt=None):
         # 8. Update debt status if fully paid
         if debt.balance <= 0 and debt.debt_status != DebtStatus.PAID:
             debt.debt_status = DebtStatus.PAID
-            debt.close_date = timezone.now().date() # Use .date() for DateField
-            debt.save(update_fields=['debt_status', 'close_date'])
+            debt.close_date = timezone.now().date()
+            debt.save(update_fields=["debt_status", "close_date"])
+
+        recovery_created.send(
+            sender=Recovery,
+            recovery=recovery,
+            actor=commercial,
+            term=updated_term,
+            debt=debt,
+        )
     return recovery
