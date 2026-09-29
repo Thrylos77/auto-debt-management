@@ -19,3 +19,9 @@ class TwoFARateThrottle(IPRateThrottle):
 
 class PasswordResetRateThrottle(IPRateThrottle):
     scope = "password_reset"
+
+
+class CustomerDuplicateCheckRateThrottle(IPRateThrottle):
+    """Limit identity-sensitive duplicate lookups."""
+
+    scope = "customer_duplicate_check"

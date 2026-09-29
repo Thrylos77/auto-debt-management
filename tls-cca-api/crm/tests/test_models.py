@@ -50,3 +50,12 @@ def test_customer_display_name_fallbacks():
         phone='444555666'
     )
     assert customer_phone.display_name == '444555666'
+
+
+@pytest.mark.django_db
+def test_customer_defaults_to_active_lifecycle():
+    customer = Customer.objects.create(phone="1234567890")
+
+    assert customer.lifecycle_status == Customer.LIFECYCLE_ACTIVE
+    assert customer.is_active is True
+    assert customer.status_changed_at is not None

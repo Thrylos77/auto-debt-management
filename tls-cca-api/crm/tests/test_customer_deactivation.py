@@ -38,7 +38,9 @@ class TestAutoDeactivationUsesConfiguredPolicy:
         old_customer.refresh_from_db()
         recent_customer.refresh_from_db()
         assert old_customer.is_active is False
+        assert old_customer.lifecycle_status == Customer.LIFECYCLE_INACTIVE
         assert recent_customer.is_active is True
+        assert recent_customer.lifecycle_status == Customer.LIFECYCLE_ACTIVE
 
     def test_default_policy_is_48_months(self):
         # No setting configured -> uses the 48-month default
@@ -53,7 +55,9 @@ class TestAutoDeactivationUsesConfiguredPolicy:
         under_48.refresh_from_db()
         over_48.refresh_from_db()
         assert under_48.is_active is True
+        assert under_48.lifecycle_status == Customer.LIFECYCLE_ACTIVE
         assert over_48.is_active is False
+        assert over_48.lifecycle_status == Customer.LIFECYCLE_INACTIVE
 
 
 @pytest.mark.django_db

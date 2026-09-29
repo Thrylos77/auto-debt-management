@@ -197,3 +197,41 @@ poetry run python manage.py spectacular --file /tmp/tls-cca-openapi.yaml
 La Vague 5 impose l'enrôlement Authenticator (TOTP) avant toute session normale. La connexion standard repose sur mot de passe + TOTP ; l'email reste réservé aux invitations, récupérations et notifications de sécurité. Les récupérations sont séparées entre self-service avec TOTP et procédures administratives pour les cas privilégiés ou la perte du second facteur.
 
 Voir `docs/AUTHENTICATION-LIFECYCLE.md` pour les parcours, endpoints, permissions et contrôles de sécurité.
+
+## Vague 6 — CRM Enterprise
+
+Le CRM conserve son modèle client/portefeuille existant et introduit un cycle de vie explicite, sans exposer de modification d'état libre via `PATCH`.
+
+Lifecycle client : `prospect`, `active`, `suspended`, `inactive`, `blocked`, `archived`. `is_active` reste conservé pour compatibilité et reste synchronisé par les opérations métier explicites.
+
+Nouvelles capacités V1 :
+
+- `POST /api/v1/crm/customers/{id}/suspend/`
+- `POST /api/v1/crm/customers/{id}/block/`
+- `POST /api/v1/crm/customers/{id}/archive/`
+- `GET /api/v1/crm/customers/{id}/timeline/`
+- `POST /api/v1/crm/customers/duplicates/check/`
+
+La déduplication est une aide à la décision : elle normalise les identifiants, retourne des candidats et des niveaux de confiance et ne supprime jamais automatiquement un client.
+
+Le profil Customer 360 est enrichi avec les coordonnées structurées (ligne d’adresse, quartier, ville, région, code postal, pays et code pays), les canaux de contact et des informations professionnelles. Les personnes physiques disposent de données d’identité, naissance, document et activité professionnelle plus détaillées ; les personnes morales disposent des informations légales, fiscales, d’activité et de représentant légal. L’ancien champ `address` reste conservé pendant la période de compatibilité.
+
+Les modèles CRM sont séparés en `crm/models/customer.py` et `crm/models/portfolio.py`, avec `crm/models/__init__.py` comme façade de compatibilité pour les imports existants.
+
+La timeline agrège l'audit existant sans dupliquer `AuditEvent` dans CRM. Son accès est protégé par `customer.timeline` et le périmètre du portefeuille.
+
+Les affectations de portefeuille restent journalisées dans `PortfolioTransfer`; les mutations vérifient désormais qu'un portefeuille inactif ne peut pas être réattribué et que le portefeuille est verrouillé pendant l'opération.
+
+La documentation OpenAPI prend en charge l'authentification JWT renforcée via une extension dédiée, et la génération de schéma n'exécute pas les contrôles métier de permission des vues pendant l'introspection. Les serializers dynamiques utilisent des descriptions de type explicites.
+
+Validation Vague 6 :
+
+```powershell
+poetry run python manage.py check
+poetry run python manage.py makemigrations crm
+poetry run python manage.py migrate
+poetry run python manage.py makemigrations --check --dry-run
+poetry run python manage.py spectacular --file openapi-crm.yaml --validate
+poetry run pytest crm/tests -v
+poetry run pytest core/tests/test_architecture_boundaries.py -v
+```

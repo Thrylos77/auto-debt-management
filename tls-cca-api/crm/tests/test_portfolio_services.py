@@ -67,12 +67,14 @@ class TestAssignPortfolio:
         with pytest.raises(ValidationError):
             assign_portfolio(portfolio, commercial)
 
-    def test_assign_activates_inactive_portfolio(self, commercial, target):
-        portfolio = Portfolio.objects.create(ref='PF-999', commercial=commercial, active=False)
-        result = assign_portfolio(portfolio, target)
-        result.refresh_from_db()
-        assert result.active is True
-        assert result.commercial_id == target.id
+    def test_assign_rejects_inactive_portfolio(self, commercial, target):
+        portfolio = Portfolio.objects.create(
+            ref="PF-999",
+            commercial=commercial,
+            active=False,
+        )
+        with pytest.raises(ValidationError):
+            assign_portfolio(portfolio, target)
 
 
 @pytest.mark.django_db
@@ -107,3 +109,21 @@ class TestTransferActivePortfoliosOfCommercial:
         target.save()
         with pytest.raises(ValidationError):
             transfer_active_portfolios_of_commercial(commercial, target)
+
+
+@pytest.mark.django_db
+def test_portfolio_transfer_journal_is_immutable(portfolio, target):
+    transfer_portfolio(portfolio, target, reason="immutable-test")
+    entry = PortfolioTransfer.objects.get(portfolio=portfolio)
+
+    with pytest.raises(RuntimeError):
+        entry.save()
+
+    with pytest.raises(RuntimeError):
+        entry.delete()
+
+    with pytest.raises(RuntimeError):
+        PortfolioTransfer.objects.filter(pk=entry.pk).update(reason="tampered")
+
+    with pytest.raises(RuntimeError):
+        PortfolioTransfer.objects.filter(pk=entry.pk).delete()

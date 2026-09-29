@@ -1,5 +1,7 @@
 """JWT authentication with mandatory MFA enforcement."""
 
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
+from drf_spectacular.plumbing import build_bearer_security_scheme_object
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
@@ -27,3 +29,17 @@ class EnforcedJWTAuthentication(JWTAuthentication):
             raise AuthenticationFailed("Account onboarding is not complete.")
 
         return user, token
+
+
+class EnforcedJWTAuthenticationScheme(OpenApiAuthenticationExtension):
+    """Expose the enforced JWT authentication scheme in OpenAPI."""
+
+    target_class = "users.authentication.EnforcedJWTAuthentication"
+    name = "jwtAuth"
+
+    def get_security_definition(self, auto_schema):
+        return build_bearer_security_scheme_object(
+            header_name="Authorization",
+            token_prefix="Bearer",
+            bearer_format="JWT",
+        )

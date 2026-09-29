@@ -27,7 +27,7 @@ def _schema_operations(schema):
 def test_openapi_generation_excludes_legacy_routes_and_keeps_v1_contract(caplog):
     """The canonical schema must not contain duplicate legacy operations."""
 
-    caplog.set_level(logging.ERROR)
+    caplog.set_level(logging.WARNING)
 
     schema = SchemaGenerator().get_schema(request=None, public=True)
     paths = schema["paths"]
@@ -68,7 +68,24 @@ def test_openapi_generation_excludes_legacy_routes_and_keeps_v1_contract(caplog)
     assert len(operation_ids) == len(set(operation_ids))
     assert EXPECTED_HISTORY_OPERATION_IDS.issubset(set(operation_ids))
 
-    assert not any(
-        "using @extend_schema on viewset class" in record.getMessage()
+    warning_messages = [
+        record.getMessage()
         for record in caplog.records
+    ]
+
+    assert not any(
+        "could not resolve authenticator" in message
+        for message in warning_messages
+    )
+    assert not any(
+        "Failed to obtain model through view's queryset" in message
+        for message in warning_messages
+    )
+    assert not any(
+        'unable to resolve type hint for function "get_value"' in message
+        for message in warning_messages
+    )
+    assert not any(
+        "using @extend_schema on viewset class" in message
+        for message in warning_messages
     )

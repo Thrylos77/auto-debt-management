@@ -159,6 +159,7 @@ REST_FRAMEWORK = {
         "login": "5/minute",
         "twofa": "5/minute",
         "password_reset": "5/hour",
+        "customer_duplicate_check": "30/minute",
     },
 }
 

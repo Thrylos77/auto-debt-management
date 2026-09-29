@@ -1,47 +1,48 @@
-""" crm/services/portfolio_services.py """
+"""Portfolio assignment and transfer services."""
 
-from __future__ import annotations # For compatibility with type hints
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, List, Optional
 
-from core.events import portfolio_assigned, portfolio_created, portfolio_transferred
-from django.db import transaction
 from django.contrib.auth import get_user_model
-from rest_framework.exceptions import ValidationError
+from django.db import transaction
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
+from core.events import portfolio_assigned, portfolio_created, portfolio_transferred
 from crm.models import Portfolio, PortfolioTransfer
 from crm.policies.portfolio_policy import PortfolioPolicy
-from rbac.services.permission_resolver import PermissionResolver
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser as UserType
 else:
-    User = get_user_model()
-    UserType = User
+    UserType = get_user_model()
+
 
 def _generate_next_portfolio_ref() -> str:
-    """
-    Generates the next available portfolio reference (e.g., PF-001, PF-002).
-    """
-    last_portfolio = Portfolio.objects.order_by('id').last()
-    if not last_portfolio or not last_portfolio.ref.startswith('PF-'):
-        return 'PF-001'
-    
+    """Generate the next available portfolio reference."""
+    last_portfolio = Portfolio.objects.order_by("id").last()
+    if not last_portfolio or not last_portfolio.ref.startswith("PF-"):
+        return "PF-001"
+
     try:
-        last_id = int(last_portfolio.ref.split('-')[-1])
-        new_id = last_id + 1
-        return f'PF-{new_id:03d}'
+        last_id = int(last_portfolio.ref.split("-")[-1])
+        return f"PF-{last_id + 1:03d}"
     except (ValueError, IndexError):
-        # Fallback in case of unexpected format
-        return f'PF-{(last_portfolio.id or 0) + 1:03d}'
+        return f"PF-{(last_portfolio.id or 0) + 1:03d}"
+
 
 @transaction.atomic
-def create_portfolio_for_commercial(commercial: UserType, description: str = None) -> Portfolio:
-    """
-    Creates a new portfolio with an auto-generated reference for a given commercial user.
-    """
+def create_portfolio_for_commercial(
+    commercial: UserType,
+    description: str = None,
+) -> Portfolio:
+    """Create a portfolio with an auto-generated reference."""
     ref = _generate_next_portfolio_ref()
-    description = description or f"Main portfolio for {commercial.get_full_name() or commercial.username}"
-    
+    description = description or (
+        f"Main portfolio for "
+        f"{commercial.get_full_name() or commercial.username}"
+    )
+
     portfolio = Portfolio.objects.create(
         ref=ref,
         commercial=commercial,
@@ -63,68 +64,68 @@ def assign_portfolio(
     reason: str = None,
     required_permission: str = "portfolio.assign",
 ) -> Portfolio:
-    """
-    Assigns an existing portfolio to a target commercial.
+    """Assign an active portfolio and append an immutable transfer entry."""
+    if to_commercial is None:
+        raise ValidationError("A target commercial is required to assign a portfolio.")
 
-    Business rules :
-    - The target commercial must be active.
-    - The portfolio cannot be re-assigned to the commercial who already owns it.
-    - The portfolio is marked active.
-    - A `PortfolioTransfer` journal entry is recorded (from/to/reason/actor/date).
-    """
-    if transferred_by is not None and not transferred_by.is_superuser:
-        from rest_framework.exceptions import PermissionDenied
-
-        if not PermissionResolver.has(transferred_by, required_permission):
-            raise PermissionDenied("You do not have permission to modify this portfolio.")
+    locked_portfolio = (
+        Portfolio.objects
+        .select_for_update()
+        .select_related("commercial")
+        .get(pk=portfolio.pk)
+    )
 
     if not PortfolioPolicy.can_assign(
         transferred_by,
-        portfolio,
+        locked_portfolio,
         to_commercial,
         permission_code=required_permission,
     ):
-        raise ValidationError("The portfolio assignment violates its business policy.")
+        raise PermissionDenied(
+            "You do not have permission to modify this portfolio."
+        )
 
-    if to_commercial is None:
-        raise ValidationError("A target commercial is required to assign a portfolio.")
+    if not locked_portfolio.active:
+        raise ValidationError(
+            f"Portfolio '{locked_portfolio.ref}' is inactive and cannot be assigned."
+        )
+
     if not to_commercial.is_active:
         raise ValidationError(
             f"Commercial '{to_commercial}' is inactive and cannot receive a portfolio."
         )
-    if portfolio.commercial_id == to_commercial.id:
+
+    if locked_portfolio.commercial_id == to_commercial.id:
         raise ValidationError(
-            f"Portfolio '{portfolio.ref}' is already assigned to '{to_commercial}'."
+            f"Portfolio '{locked_portfolio.ref}' is already assigned to '{to_commercial}'."
         )
 
-    from_commercial = portfolio.commercial
+    from_commercial = locked_portfolio.commercial
+    locked_portfolio.commercial = to_commercial
+    locked_portfolio.save(update_fields=["commercial", "last_transfer_date"])
 
-    portfolio.commercial = to_commercial
-    portfolio.active = True
-    portfolio.save()
-
-    reason = reason or (
+    transfer_reason = reason or (
         f"Assigned from {from_commercial or 'unassigned'} to {to_commercial}"
         if from_commercial
         else f"Assigned to {to_commercial}"
     )
 
     PortfolioTransfer.objects.create(
-        portfolio=portfolio,
+        portfolio=locked_portfolio,
         from_commercial=from_commercial,
         to_commercial=to_commercial,
         transferred_by=transferred_by,
-        reason=reason,
+        reason=transfer_reason,
     )
     portfolio_assigned.send(
         sender=Portfolio,
-        portfolio=portfolio,
+        portfolio=locked_portfolio,
         actor=transferred_by,
         from_commercial=from_commercial,
         to_commercial=to_commercial,
-        reason=reason,
+        reason=transfer_reason,
     )
-    return portfolio
+    return locked_portfolio
 
 
 @transaction.atomic
@@ -134,12 +135,7 @@ def transfer_portfolio(
     transferred_by: Optional[UserType] = None,
     reason: str = None,
 ) -> Portfolio:
-    """
-    Transfers a single portfolio to a new commercial.
-
-    Used for the "leaving commercial" scenario where a portfolio must be
-    handed over to another commercial. Delegates to :func:`assign_portfolio`.
-    """
+    """Transfer one active portfolio to another active commercial."""
     result = assign_portfolio(
         portfolio,
         to_commercial,
@@ -164,23 +160,24 @@ def transfer_active_portfolios_of_commercial(
     transferred_by: Optional[UserType] = None,
     reason: str = None,
 ) -> List[Portfolio]:
-    """
-    Transfers all active portfolios owned by a commercial to a target commercial.
-
-    Typically invoked when a commercial is leaving/departing and their
-    portfolios must be redistributed before deactivating the user.
-    Returns the list of portfolios that were effectively transferred.
-    """
+    """Transfer all active portfolios owned by a departing commercial."""
     if to_commercial is None:
-        raise ValidationError("A target commercial is required to transfer portfolios.")
+        raise ValidationError(
+            "A target commercial is required to transfer portfolios."
+        )
     if not to_commercial.is_active:
         raise ValidationError(
             f"Commercial '{to_commercial}' is inactive and cannot receive portfolios."
         )
 
-    reason = reason or f"Transfer of leaving commercial '{from_commercial}' portfolios"
+    transfer_reason = reason or (
+        f"Transfer of leaving commercial '{from_commercial}' portfolios"
+    )
+    portfolios = Portfolio.objects.filter(
+        commercial=from_commercial,
+        active=True,
+    )
 
-    portfolios = Portfolio.objects.filter(commercial=from_commercial, active=True)
     transferred: List[Portfolio] = []
     for portfolio in portfolios:
         if portfolio.commercial_id == to_commercial.id:
@@ -190,7 +187,7 @@ def transfer_active_portfolios_of_commercial(
                 portfolio,
                 to_commercial,
                 transferred_by=transferred_by,
-                reason=reason,
+                reason=transfer_reason,
                 required_permission="portfolio.transfer",
             )
         )

@@ -70,3 +70,39 @@ def test_portfolio_assignment_policy_accepts_authorized_target(db):
     )
 
     assert result.commercial_id == actor.id
+
+
+@pytest.mark.django_db
+def test_customer_timeline_policy_requires_permission_and_scope():
+    from crm.models import Customer, Portfolio
+    from crm.policies.customer_policy import CustomerPolicy
+
+    owner = User.objects.create_user(
+        username="timeline-policy-owner",
+        email="timeline-policy-owner@example.com",
+        password="x",
+        is_active=True,
+    )
+    viewer = User.objects.create_user(
+        username="timeline-policy-viewer",
+        email="timeline-policy-viewer@example.com",
+        password="x",
+        is_active=True,
+    )
+    portfolio = Portfolio.objects.create(
+        ref="PF_TIMELINE_POLICY",
+        commercial=owner,
+    )
+    customer = Customer.objects.create(
+        phone="1234567890",
+        portfolio=portfolio,
+    )
+
+    assert CustomerPolicy.can_view_timeline(viewer, customer) is False
+
+    _grant(viewer, "customer.timeline")
+    assert CustomerPolicy.can_view_timeline(viewer, customer) is False
+    assert CustomerPolicy.can_view_timeline(owner, customer) is False
+
+    _grant(owner, "customer.timeline")
+    assert CustomerPolicy.can_view_timeline(owner, customer) is True

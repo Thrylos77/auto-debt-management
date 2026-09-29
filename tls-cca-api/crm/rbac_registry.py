@@ -23,6 +23,21 @@ PERMISSIONS = (
         code='customer.deactivate', label='Deactivate a customer'
     ),
     PermissionDefinition(
+        code='customer.suspend', label='Suspend a customer'
+    ),
+    PermissionDefinition(
+        code='customer.block', label='Block a customer'
+    ),
+    PermissionDefinition(
+        code='customer.archive', label='Archive a customer'
+    ),
+    PermissionDefinition(
+        code='customer.timeline', label='View a customer activity timeline'
+    ),
+    PermissionDefinition(
+        code='customer.duplicate_check', label='Check customer duplicates'
+    ),
+    PermissionDefinition(
         code='customer.list_all', label='View all customers from all commercials'
     ),
     PermissionDefinition(

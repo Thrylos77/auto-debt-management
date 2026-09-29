@@ -18,8 +18,11 @@ from configuration.services import ConfigurationService, ConfigurationTypeCodec
 class ConfigurationSettingListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = SystemSettingSerializer
+    queryset = SystemSetting.objects.none()
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return SystemSetting.objects.none()
         if not ConfigurationPolicy.can_list(self.request.user):
             from rest_framework.exceptions import PermissionDenied
 

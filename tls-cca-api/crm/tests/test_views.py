@@ -168,8 +168,29 @@ class TestCustomerCustomActionPermissions:
         )
         assert response.status_code == 403
 
+        for action_name in ('suspend', 'block', 'archive'):
+            response = api_client.post(
+                reverse(f'customer-{action_name}', kwargs={'pk': new_customer.pk}),
+                {},
+                format='json',
+            )
+            assert response.status_code == 403
+
+        response = api_client.get(
+            reverse('customer-timeline', kwargs={'pk': new_customer.pk})
+        )
+        assert response.status_code == 403
+
+        response = api_client.post(
+            reverse('customer-duplicate-check'),
+            {'email': new_customer.email},
+            format='json',
+        )
+        assert response.status_code == 403
+
     def test_activate_allows_with_permission(self, api_client, new_customer):
-        Customer.objects.filter(pk=new_customer.pk).update(is_active=False)
+        from crm.services.customer_services import deactivate_customer
+        deactivate_customer(new_customer, actor=None)
         new_customer.refresh_from_db()
         user = self._user_with_permissions('customer.activate', 'customer.list_all')
         api_client.force_authenticate(user=user)

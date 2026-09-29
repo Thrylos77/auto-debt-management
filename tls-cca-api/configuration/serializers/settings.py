@@ -2,6 +2,7 @@
 
 from decimal import Decimal
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from configuration.models import SystemSetting
@@ -33,6 +34,7 @@ class SystemSettingSerializer(serializers.ModelSerializer):
         )
         read_only_fields = fields
 
+    @extend_schema_field(serializers.JSONField())
     def get_value(self, obj):
         value = ConfigurationTypeCodec.decode(obj.value, obj.value_type)
         if isinstance(value, Decimal):

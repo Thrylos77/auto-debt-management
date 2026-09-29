@@ -8,6 +8,8 @@ from core.events import (
     customer_activated,
     customer_created,
     customer_deactivated,
+    customer_duplicate_detected,
+    customer_lifecycle_changed,
     customer_updated,
     debt_status_updated,
     portfolio_assigned,
@@ -306,6 +308,55 @@ def audit_customer_deactivated(sender, customer, actor=None, request=None, **kwa
         resource=customer,
         status="success",
         request=request,
+    )
+
+
+@receiver(customer_lifecycle_changed)
+def audit_customer_lifecycle_changed(
+    sender,
+    customer,
+    actor=None,
+    request=None,
+    previous_status="",
+    new_status="",
+    reason="",
+    **kwargs,
+):
+    # Persist inside the same transaction as the lifecycle mutation.
+    AuditService.record(
+        actor=actor,
+        category="BUSINESS",
+        action="customer.lifecycle_changed",
+        resource=customer,
+        status="success",
+        reason=reason or "",
+        request=request,
+        metadata={
+            "previous_status": previous_status,
+            "new_status": new_status,
+        },
+    )
+
+
+@receiver(customer_duplicate_detected)
+def audit_customer_duplicate_detected(
+    sender,
+    actor=None,
+    request=None,
+    candidate_ids=None,
+    **kwargs,
+):
+    # Do not persist the identity values submitted to the duplicate check.
+    AuditService.record(
+        actor=actor,
+        category="BUSINESS",
+        action="customer.duplicate_detected",
+        status="success",
+        request=request,
+        metadata={
+            "candidate_ids": list(candidate_ids or []),
+            "candidate_count": len(candidate_ids or []),
+        },
     )
 
 
