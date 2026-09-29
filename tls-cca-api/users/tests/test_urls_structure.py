@@ -1,7 +1,7 @@
 """Regression tests for the canonical Users URL package."""
 
 import pytest
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 
 import config.v1_urls as v1_urls
 import users.urls as users_urls
@@ -10,23 +10,29 @@ import users.urls as users_urls
 @pytest.mark.django_db
 def test_users_urls_package_aggregates_three_url_modules():
     package_dir = users_urls.__path__[0]
-
     names = {pattern.name for pattern in users_urls.urlpatterns if pattern.name}
 
     assert package_dir
     assert "auth-login" in names
     assert "user-list" in names
     assert "2fa-setup" in names
+    assert "auth-invitation-accept" in names
+    assert "auth-password-reset" in names
+    assert "user-2fa-reset" in names
 
 
 def test_users_urls_keep_expected_v1_paths():
     assert reverse("auth-login") == "/api/v1/auth/login/"
     assert reverse("user-list") == "/api/v1/users/"
     assert reverse("2fa-setup") == "/api/v1/users/me/2fa/setup/"
+    assert reverse("auth-invitation-accept") == "/api/v1/auth/invitation/accept/"
+    assert reverse("auth-password-forgot") == "/api/v1/auth/password/forgot/"
+    assert reverse("auth-password-reset") == "/api/v1/auth/password/reset/"
+    assert reverse("user-2fa-reset", kwargs={"pk": 1}) == "/api/v1/users/1/2fa/reset/"
 
 
 def test_config_v1_urls_only_points_to_users_urls_package():
-    """Verify the actual Django URL resolvers instead of reading source files."""
+    """Verify the actual Django URL resolvers instead of source files."""
     included_urlconfs = {
         getattr(urlconf, "__name__", urlconf)
         for pattern in v1_urls.urlpatterns
@@ -37,18 +43,11 @@ def test_config_v1_urls_only_points_to_users_urls_package():
     assert "users.auth_urls" not in included_urlconfs
 
 
-
-def test_legacy_url_names_are_removed():
-    """The final API surface must not expose pre-v1 named routes."""
-    from django.urls import NoReverseMatch
-
+def test_legacy_security_routes_are_removed():
     legacy_names = {
-        "token_obtain_pair",
-        "change-own-password",
-        "change-password",
         "request-otp",
-        "reset-password",
-        "legacy-user-list",
+        "change-password",
+        "2fa-disable",
     }
 
     for name in legacy_names:

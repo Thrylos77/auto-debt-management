@@ -23,3 +23,15 @@ def test_user_has_no_legacy_permission_accessors():
 
     assert not hasattr(User, "all_permissions")
     assert not hasattr(User, "has_permission")
+
+
+def test_recovery_code_and_otp_models_are_removed():
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parents[2]
+    users_root = project_root / "users"
+    assert not (users_root / "models" / "otp.py").exists()
+    assert not (users_root / "models" / "recovery.py").exists()
+    assert not (users_root / "services" / "otp_service.py").exists()
+    assert not (users_root / "management" / "commands" / "flush_expired_tokens.py").exists()
+    assert not (users_root / "policies" / "twofa_policy.py").exists()

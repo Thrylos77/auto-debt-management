@@ -112,16 +112,22 @@ def test_jwt_hardening_settings_are_enabled():
 def test_sensitive_auth_views_keep_explicit_throttles():
     from users.views import (
         LoginView,
-        RequestOTPView,
+        RequestPasswordResetView,
         ResetPasswordView,
+        VerifyInitialTwoFAView,
         VerifySetup2FAView,
         VerifyTwoFALoginView,
     )
 
-    from core.throttling import LoginRateThrottle, OTPRateThrottle, PasswordResetRateThrottle, TwoFARateThrottle
+    from core.throttling import (
+        LoginRateThrottle,
+        PasswordResetRateThrottle,
+        TwoFARateThrottle,
+    )
 
     assert LoginRateThrottle in LoginView.throttle_classes
     assert TwoFARateThrottle in VerifyTwoFALoginView.throttle_classes
     assert TwoFARateThrottle in VerifySetup2FAView.throttle_classes
-    assert OTPRateThrottle in RequestOTPView.throttle_classes
+    assert TwoFARateThrottle in VerifyInitialTwoFAView.throttle_classes
+    assert PasswordResetRateThrottle in RequestPasswordResetView.throttle_classes
     assert PasswordResetRateThrottle in ResetPasswordView.throttle_classes

@@ -8,11 +8,26 @@ from simple_history.models import HistoricalRecords
 from core.utils.validators import phone_validator
 
 
+class AccountStatus(models.TextChoices):
+    """Lifecycle states used by the authentication onboarding flow."""
+
+    INVITED = "invited", "Invited"
+    PASSWORD_SET = "password_set", "Password set"
+    ACTIVE = "active", "Active"
+    DISABLED = "disabled", "Disabled"
+
+
 class User(AbstractUser):
     email = models.EmailField(_("email address"), unique=True)
     phone = models.CharField(max_length=30, blank=True, validators=[phone_validator])
     address = models.TextField(blank=True)
     birthday = models.DateField(blank=True, null=True)
+    account_status = models.CharField(
+        max_length=20,
+        choices=AccountStatus.choices,
+        default=AccountStatus.ACTIVE,
+        db_index=True,
+    )
 
     history = HistoricalRecords(
         excluded_fields=["last_login"],

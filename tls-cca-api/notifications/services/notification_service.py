@@ -1,5 +1,6 @@
 """Notification orchestration across in-app and email channels."""
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
@@ -121,21 +122,75 @@ class NotificationService:
         return notification
 
     @classmethod
-    def notify_password_reset_otp(cls, *, user, otp: str, request=None):
-        """Send the security-sensitive password-reset OTP by email only."""
+    def _frontend_link(cls, path, token):
+        base = getattr(settings, "AUTH_PUBLIC_BASE_URL", "")
+        return f"{base.rstrip('/')}{path}?token={token}"
 
+    @classmethod
+    def notify_account_invitation(cls, *, user, token):
         return cls.notify(
             user=user,
             category=Notification.SECURITY,
-            code="password_reset_otp",
-            title="Password reset OTP",
-            message=(
-                "Use the one-time password sent to your email to reset your "
-                "password."
-            ),
+            code="account_invitation",
+            title="Complete your TLS CCA account setup",
+            message="Use your invitation link to define your password and enroll your Authenticator.",
             channels=(NotificationDelivery.CHANNEL_EMAIL,),
-            context={"otp": otp},
-            idempotency_key=None,
+            context={
+                "link": cls._frontend_link(
+                    getattr(
+                        settings,
+                        "AUTH_INVITATION_PATH",
+                        "/auth/invitation",
+                    ),
+                    token,
+                )
+            },
+        )
+
+    @classmethod
+    def notify_password_reset_link(cls, *, user, token, admin_triggered=False):
+        return cls.notify(
+            user=user,
+            category=Notification.SECURITY,
+            code=(
+                "password_reset_link_admin"
+                if admin_triggered
+                else "password_reset_link"
+            ),
+            title="Password reset request",
+            message="A secure password reset link has been generated for your account.",
+            channels=(NotificationDelivery.CHANNEL_EMAIL,),
+            context={
+                "link": cls._frontend_link(
+                    getattr(
+                        settings,
+                        "AUTH_PASSWORD_RESET_PATH",
+                        "/auth/password/reset",
+                    ),
+                    token,
+                )
+            },
+        )
+
+    @classmethod
+    def notify_twofa_reset(cls, *, user, token):
+        return cls.notify(
+            user=user,
+            category=Notification.SECURITY,
+            code="twofa_reset",
+            title="Authenticator reset",
+            message="Your Authenticator has been reset and must be enrolled again.",
+            channels=(NotificationDelivery.CHANNEL_EMAIL,),
+            context={
+                "link": cls._frontend_link(
+                    getattr(
+                        settings,
+                        "AUTH_TWOFA_RECOVERY_PATH",
+                        "/auth/2fa/recovery",
+                    ),
+                    token,
+                )
+            },
         )
 
     @staticmethod

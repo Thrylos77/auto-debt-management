@@ -1,16 +1,15 @@
-from drf_spectacular.utils import extend_schema
 from django.utils import timezone as django_timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
-from core.throttling import LoginRateThrottle, TwoFARateThrottle
-from users.serializers.auth import Login2FASerializer, LoginSerializer, LogoutSerializer
-from users.services.authentication import AuthenticationService
-from users.services.session_service import SessionService
 from core.events import user_logout
+from core.throttling import LoginRateThrottle, TwoFARateThrottle
+from users.serializers import Login2FASerializer, LoginSerializer, LogoutSerializer
+from users.services import AuthenticationService, SessionService
 
 
 @extend_schema(tags=["Authentication"])
@@ -86,6 +85,24 @@ class RefreshView(TokenRefreshView):
                     token_family = old_session.token_family
             except TokenError:
                 pass
+
+        if user is not None:
+            from users.models import AccountStatus
+
+            from users.models import UserSecurityProfile
+
+            profile = UserSecurityProfile.objects.filter(user=user).first()
+            if (
+                not user.is_active
+                or user.account_status != AccountStatus.ACTIVE
+                or not profile
+                or not profile.two_factor_enabled
+                or not profile.totp_secret_encrypted
+                or not user.has_usable_password()
+            ):
+                from rest_framework.exceptions import AuthenticationFailed
+
+                raise AuthenticationFailed("Account onboarding is not complete.")
 
         response = super().post(request, *args, **kwargs)
         if response.status_code != status.HTTP_200_OK or not response.data.get("refresh") or user is None:

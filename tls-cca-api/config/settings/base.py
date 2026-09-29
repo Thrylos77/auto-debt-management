@@ -139,7 +139,7 @@ AUTH_USER_MODEL = "users.User"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "users.authentication.EnforcedJWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
@@ -156,7 +156,6 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "100/hour",
         "user": "1000/hour",
-        "otp": "3/hour",
         "login": "5/minute",
         "twofa": "5/minute",
         "password_reset": "5/hour",
@@ -213,6 +212,11 @@ SIMPLE_JWT = {
 
 TOTP_ISSUER = os.getenv("TOTP_ISSUER", "TLS CCA")
 TOTP_ENCRYPTION_KEY = os.getenv("TOTP_ENCRYPTION_KEY", "")
+
+AUTH_PUBLIC_BASE_URL = os.getenv("AUTH_PUBLIC_BASE_URL", "http://localhost:3000")
+AUTH_INVITATION_PATH = os.getenv("AUTH_INVITATION_PATH", "/auth/invitation")
+AUTH_PASSWORD_RESET_PATH = os.getenv("AUTH_PASSWORD_RESET_PATH", "/auth/password/reset")
+AUTH_TWOFA_RECOVERY_PATH = os.getenv("AUTH_TWOFA_RECOVERY_PATH", "/auth/2fa/recovery")
 
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")

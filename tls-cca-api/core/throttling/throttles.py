@@ -17,9 +17,5 @@ class TwoFARateThrottle(IPRateThrottle):
     scope = "twofa"
 
 
-class OTPRateThrottle(IPRateThrottle):
-    scope = "otp"
-
-
 class PasswordResetRateThrottle(IPRateThrottle):
     scope = "password_reset"

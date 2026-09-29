@@ -1,18 +1,17 @@
-from .otp import OTP
+from .invitations import AccountInvitation, PasswordResetChallenge
 from .preferences import UserPreference
-from .recovery import RecoveryCode
-from .security import UserSecurityProfile
+from .security import TwoFAChallenge, TwoFASetup, UserSecurityProfile
 from .sessions import UserSession
-from .twofa import TwoFAChallenge, TwoFASetup
-from .user import User
+from .user import AccountStatus, User
 
 __all__ = [
+    "AccountInvitation",
+    "AccountStatus",
+    "PasswordResetChallenge",
     "User",
-    "OTP",
     "UserPreference",
     "UserSecurityProfile",
     "TwoFASetup",
     "TwoFAChallenge",
     "UserSession",
-    "RecoveryCode",
 ]

@@ -1,21 +1,20 @@
-"""Application-level domain events.
-
-The events live in ``core`` so platform consumers such as audit can listen to
-business and identity events without importing concrete business applications.
-"""
+"""Application-level domain events shared by decoupled domains."""
 
 from django.dispatch import Signal
-
 
 user_deactivated = Signal()
 user_reactivated = Signal()
 user_password_changed = Signal()
+user_password_initialized = Signal()
+user_password_reset_requested = Signal()
+user_password_reset_completed = Signal()
+user_invitation_created = Signal()
 user_login_succeeded = Signal()
 user_login_failed = Signal()
 user_twofa_success = Signal()
 user_twofa_failure = Signal()
 user_twofa_enabled = Signal()
-user_twofa_disabled = Signal()
+user_twofa_reset = Signal()
 user_logout = Signal()
 user_session_revoked = Signal()
 

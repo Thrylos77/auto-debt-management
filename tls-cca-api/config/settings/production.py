@@ -2,6 +2,8 @@
 
 import os
 
+from cryptography.fernet import Fernet
+
 from .base import *  # noqa: F401,F403
 
 DEBUG = False
@@ -42,3 +44,14 @@ if os.getenv("TRUST_PROXY_SSL", "False").lower() in {"true", "1", "t", "yes"}:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 else:
     SECURE_PROXY_SSL_HEADER = None
+
+if not TOTP_ENCRYPTION_KEY:
+    raise RuntimeError("TOTP_ENCRYPTION_KEY must be configured in production.")
+try:
+    Fernet(TOTP_ENCRYPTION_KEY.encode("utf-8"))
+except (TypeError, ValueError) as exc:
+    raise RuntimeError("TOTP_ENCRYPTION_KEY must be a valid Fernet key in production.") from exc
+
+AUTH_PUBLIC_BASE_URL = os.getenv("AUTH_PUBLIC_BASE_URL", "").rstrip("/")
+if not AUTH_PUBLIC_BASE_URL.startswith("https://"):
+    raise RuntimeError("AUTH_PUBLIC_BASE_URL must use HTTPS in production.")

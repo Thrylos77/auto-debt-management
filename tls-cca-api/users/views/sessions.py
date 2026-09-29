@@ -5,12 +5,13 @@ from rest_framework.response import Response
 
 from users.models import UserSession
 from users.policies.session_policy import SessionPolicy
-from users.serializers.sessions import UserSessionSerializer
-from users.serializers.users import (
-    EmptyRequestSerializer,
+from users.serializers import (
     SessionActionResponseSerializer,
+    UserSessionSerializer,
+    EmptyRequestSerializer,
 )
-from users.services.session_service import SessionService
+
+from users.services import SessionService
 
 
 @extend_schema(tags=["Sessions"])

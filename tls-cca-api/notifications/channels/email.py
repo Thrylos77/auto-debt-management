@@ -16,7 +16,10 @@ from .base import NotificationChannel
 
 
 DEFAULT_EMAIL_SUBJECTS = {
-    "password_reset_otp": "Your One-Time Password (OTP) for Password Reset",
+    "account_invitation": "Complete your TLS CCA account setup",
+    "password_reset_link": "Reset your TLS CCA password",
+    "password_reset_link_admin": "TLS CCA password reset requested",
+    "twofa_reset": "TLS CCA Authenticator reset",
 }
 
 
@@ -32,10 +35,7 @@ class EmailChannel(NotificationChannel):
     ) -> None:
         delivery.attempts += 1
         delivery.save(
-            update_fields=[
-                "attempts",
-                "updated_at",
-            ]
+            update_fields=["attempts", "updated_at"]
         )
 
         try:
@@ -57,9 +57,7 @@ class EmailChannel(NotificationChannel):
                 )
                 subject = db_template.subject or notification.title
             else:
-                template_name = (
-                    f"notifications/emails/{template_code}.html"
-                )
+                template_name = f"notifications/emails/{template_code}.html"
                 html_message = render_to_string(template_name, render_context)
                 subject = DEFAULT_EMAIL_SUBJECTS.get(
                     template_code,
@@ -78,20 +76,12 @@ class EmailChannel(NotificationChannel):
             delivery.status = NotificationDelivery.STATUS_FAILED
             delivery.error_message = str(exc)[:2000]
             delivery.save(
-                update_fields=[
-                    "status",
-                    "error_message",
-                    "updated_at",
-                ]
+                update_fields=["status", "error_message", "updated_at"]
             )
             raise
 
         delivery.status = NotificationDelivery.STATUS_SENT
         delivery.sent_at = timezone.now()
         delivery.save(
-            update_fields=[
-                "status",
-                "sent_at",
-                "updated_at",
-            ]
+            update_fields=["status", "sent_at", "updated_at"]
         )

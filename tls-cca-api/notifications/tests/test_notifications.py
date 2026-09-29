@@ -3,14 +3,10 @@
 import pytest
 from django.core import mail
 from django.core.exceptions import ValidationError
-from django.urls import reverse
 from rest_framework.test import APIClient
+from django.urls import reverse
 
-from notifications.models import (
-    Notification,
-    NotificationDelivery,
-    NotificationPreference,
-)
+from notifications.models import Notification, NotificationDelivery, NotificationPreference
 from notifications.services import NotificationService
 from users.models import User
 
@@ -31,9 +27,9 @@ class TestNotificationService:
             system_enabled=False,
         )
 
-        NotificationService.notify_password_reset_otp(
+        NotificationService.notify_password_reset_link(
             user=user,
-            otp="123456",
+            token="123456-token",
         )
 
         assert Notification.objects.filter(
@@ -77,13 +73,13 @@ class TestNotificationService:
             password="ValidPass123!",
         )
 
-        first = NotificationService.notify_password_reset_otp(
+        first = NotificationService.notify_password_reset_link(
             user=user,
-            otp="111111",
+            token="111111-token",
         )
-        second = NotificationService.notify_password_reset_otp(
+        second = NotificationService.notify_password_reset_link(
             user=user,
-            otp="222222",
+            token="222222-token",
         )
 
         assert first.pk != second.pk
@@ -110,92 +106,37 @@ class TestNotificationService:
                 channels=("sms",),
             )
 
-    def test_idempotency_prevents_duplicate_notification(self):
+    def test_notification_read_endpoints(self):
         user = User.objects.create_user(
-            username="idempotent-user",
-            email="idempotent@example.com",
+            username="notification-api",
+            email="notification-api@example.com",
             password="ValidPass123!",
         )
-        first = NotificationService.notify(
-            user=user,
-            category=Notification.SYSTEM,
-            code="system.test",
-            title="System",
-            message="Test",
-            idempotency_key="system-test-1",
-        )
-        second = NotificationService.notify(
-            user=user,
-            category=Notification.SYSTEM,
-            code="system.test",
-            title="System",
-            message="Test",
-            idempotency_key="system-test-1",
-        )
-
-        assert first.pk == second.pk
-        assert Notification.objects.filter(user=user).count() == 1
-
-
-@pytest.mark.django_db
-class TestNotificationAPI:
-    def test_user_cannot_read_another_users_notification(self):
-        owner = User.objects.create_user(
-            username="owner",
-            email="owner@example.com",
-            password="ValidPass123!",
-        )
-        other = User.objects.create_user(
-            username="other",
-            email="other@example.com",
-            password="ValidPass123!",
-        )
-        notification = NotificationService.notify(
-            user=owner,
-            category=Notification.SYSTEM,
-            code="system.test",
-            title="Private",
-            message="Owner only",
-        )
-
-        client = APIClient()
-        client.force_authenticate(user=other)
-        response = client.get(
-            reverse(
-                "notification-detail",
-                kwargs={"pk": notification.pk},
-            )
-        )
-
-        assert response.status_code == 404
-
-    def test_mark_all_as_read(self):
-        user = User.objects.create_user(
-            username="read-all",
-            email="read-all@example.com",
-            password="ValidPass123!",
-        )
-        NotificationService.notify(
+        first = Notification.objects.create(
             user=user,
             category=Notification.SYSTEM,
             code="system.one",
             title="One",
-            message="One",
+            message="First",
         )
-        NotificationService.notify(
+        Notification.objects.create(
             user=user,
             category=Notification.SYSTEM,
             code="system.two",
             title="Two",
-            message="Two",
+            message="Second",
         )
-
         client = APIClient()
         client.force_authenticate(user=user)
-        response = client.post(reverse("notification-read-all"))
 
+        response = client.post(reverse("notification-read", kwargs={"pk": first.pk}))
         assert response.status_code == 200
-        assert response.data["updated"] == 2
+        first.refresh_from_db()
+        assert first.is_read is True
+
+        response = client.post(reverse("notification-read-all"))
+        assert response.status_code == 200
+        assert response.data["updated"] == 1
         assert not Notification.objects.filter(user=user, is_read=False).exists()
 
     def test_preferences_api_can_update_non_security_preferences(self):

@@ -150,7 +150,6 @@ Identity:
 - `GET/PATCH /api/v1/users/me/preferences/`
 - `POST /api/v1/users/me/2fa/setup/`
 - `POST /api/v1/users/me/2fa/verify-setup/`
-- `POST /api/v1/users/me/2fa/disable/`
 
 Health:
 
@@ -177,7 +176,9 @@ Avant installation de cette version, ajoutez la dépendance CORS :
 poetry add django-cors-headers
 ```
 
-En production, `DJANGO_SECRET_KEY`, `JWT_SIGNING_KEY`, `JWT_AUDIENCE`, `JWT_ISSUER`, `DB_NAME` et `ALLOWED_HOSTS` doivent être renseignés. Une modification de `JWT_SIGNING_KEY` invalide volontairement les JWT existants : le retour arrière consiste à restaurer l'ancienne valeur pendant la fenêtre de réversibilité prévue.
+En production, `DJANGO_SECRET_KEY`, `JWT_SIGNING_KEY`, `JWT_AUDIENCE`, `JWT_ISSUER`, `DB_NAME`, `ALLOWED_HOSTS`, `TOTP_ENCRYPTION_KEY` et `AUTH_PUBLIC_BASE_URL` doivent être renseignés. `TOTP_ENCRYPTION_KEY` doit être une clé Fernet dédiée et `AUTH_PUBLIC_BASE_URL` doit utiliser HTTPS. Une modification de `JWT_SIGNING_KEY` invalide volontairement les JWT existants : le retour arrière consiste à restaurer l'ancienne valeur pendant la fenêtre de réversibilité prévue.
+
+Pour générer une clé Fernet locale : `poetry run python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
 
 Validation finale recommandée :
 
@@ -190,3 +191,9 @@ poetry run python manage.py sync_rbac --strict
 poetry run pytest -v -W error::django.core.paginator.UnorderedObjectListWarning
 poetry run python manage.py spectacular --file /tmp/tls-cca-openapi.yaml
 ```
+
+## Vague 5 — Authentification, enrôlement MFA et récupération
+
+La Vague 5 impose l'enrôlement Authenticator (TOTP) avant toute session normale. La connexion standard repose sur mot de passe + TOTP ; l'email reste réservé aux invitations, récupérations et notifications de sécurité. Les récupérations sont séparées entre self-service avec TOTP et procédures administratives pour les cas privilégiés ou la perte du second facteur.
+
+Voir `docs/AUTHENTICATION-LIFECYCLE.md` pour les parcours, endpoints, permissions et contrôles de sécurité.

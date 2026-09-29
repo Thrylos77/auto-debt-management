@@ -1,4 +1,4 @@
-"""Audit receivers for identity, session, and security domain events."""
+"""Audit receivers for identity, session, security, and domain events."""
 
 from django.dispatch import receiver
 
@@ -15,15 +15,19 @@ from core.events import (
     portfolio_transferred,
     recovery_created,
     user_deactivated,
+    user_invitation_created,
     user_login_failed,
     user_login_succeeded,
     user_logout,
     user_password_changed,
+    user_password_initialized,
+    user_password_reset_completed,
+    user_password_reset_requested,
     user_reactivated,
     user_session_revoked,
-    user_twofa_disabled,
     user_twofa_enabled,
     user_twofa_failure,
+    user_twofa_reset,
     user_twofa_success,
 )
 
@@ -34,16 +38,20 @@ def audit_login_success(
     user,
     request=None,
     requires_2fa=False,
+    requires_2fa_setup=False,
     **kwargs,
 ):
+    if requires_2fa_setup:
+        action = "login.2fa_enrollment_required"
+    elif requires_2fa:
+        action = "login.2fa_required"
+    else:
+        action = "login.success"
+
     AuditService.record_on_commit(
         actor=user,
         category="AUTHENTICATION",
-        action=(
-            "login.2fa_required"
-            if requires_2fa
-            else "login.success"
-        ),
+        action=action,
         status="success",
         request=request,
     )
@@ -57,9 +65,6 @@ def audit_login_failure(
     reason="Invalid credentials",
     **kwargs,
 ):
-    # The authentication transaction has already completed before the event
-    # is emitted. Record the failure immediately so the audit event is never
-    # hidden behind an unrelated surrounding transaction.
     AuditService.record(
         actor=user,
         category="AUTHENTICATION",
@@ -71,35 +76,18 @@ def audit_login_failure(
 
 
 @receiver(user_twofa_success)
-def audit_twofa_success(
-    sender,
-    user,
-    recovery_code=False,
-    request=None,
-    **kwargs,
-):
+def audit_twofa_success(sender, user, request=None, **kwargs):
     AuditService.record_on_commit(
         actor=user,
         category="AUTHENTICATION",
-        action=(
-            "login.2fa_recovery"
-            if recovery_code
-            else "login.2fa_success"
-        ),
+        action="login.2fa_success",
         status="success",
         request=request,
     )
 
 
 @receiver(user_twofa_failure)
-def audit_twofa_failure(
-    sender,
-    user,
-    request=None,
-    **kwargs,
-):
-    # The invalid-attempt counter is committed before this signal is sent.
-    # Persist the failure immediately for deterministic security auditing.
+def audit_twofa_failure(sender, user, request=None, **kwargs):
     AuditService.record(
         actor=user,
         category="AUTHENTICATION",
@@ -110,12 +98,7 @@ def audit_twofa_failure(
 
 
 @receiver(user_twofa_enabled)
-def audit_twofa_enabled(
-    sender,
-    user,
-    request=None,
-    **kwargs,
-):
+def audit_twofa_enabled(sender, user, request=None, **kwargs):
     AuditService.record_on_commit(
         actor=user,
         category="SECURITY",
@@ -126,17 +109,12 @@ def audit_twofa_enabled(
     )
 
 
-@receiver(user_twofa_disabled)
-def audit_twofa_disabled(
-    sender,
-    user,
-    request=None,
-    **kwargs,
-):
+@receiver(user_twofa_reset)
+def audit_twofa_reset(sender, user, actor=None, request=None, **kwargs):
     AuditService.record_on_commit(
-        actor=user,
+        actor=actor,
         category="SECURITY",
-        action="2fa.disable",
+        action="2fa.reset",
         resource=user,
         status="success",
         request=request,
@@ -144,13 +122,7 @@ def audit_twofa_disabled(
 
 
 @receiver(user_password_changed)
-def audit_password_change(
-    sender,
-    user,
-    actor=None,
-    request=None,
-    **kwargs,
-):
+def audit_password_change(sender, user, actor=None, request=None, force=False, **kwargs):
     AuditService.record_on_commit(
         actor=actor or user,
         category="SECURITY",
@@ -158,16 +130,76 @@ def audit_password_change(
         resource=user,
         status="success",
         request=request,
+        metadata={"forced": bool(force)},
+    )
+
+
+@receiver(user_password_initialized)
+def audit_password_initialized(sender, user, request=None, **kwargs):
+    AuditService.record_on_commit(
+        actor=user,
+        category="SECURITY",
+        action="password.initialize",
+        resource=user,
+        status="success",
+        request=request,
+    )
+
+
+@receiver(user_password_reset_requested)
+def audit_password_reset_requested(
+    sender,
+    user,
+    actor=None,
+    purpose="self_service",
+    request=None,
+    **kwargs,
+):
+    AuditService.record_on_commit(
+        actor=actor,
+        category="SECURITY",
+        action="password.reset_requested",
+        resource=user,
+        status="success",
+        request=request,
+        metadata={"purpose": purpose},
+    )
+
+
+@receiver(user_password_reset_completed)
+def audit_password_reset_completed(
+    sender,
+    user,
+    actor=None,
+    purpose="self_service",
+    request=None,
+    **kwargs,
+):
+    AuditService.record_on_commit(
+        actor=actor or user,
+        category="SECURITY",
+        action="password.reset_completed",
+        resource=user,
+        status="success",
+        request=request,
+        metadata={"purpose": purpose},
+    )
+
+
+@receiver(user_invitation_created)
+def audit_invitation_created(sender, user, actor=None, request=None, **kwargs):
+    AuditService.record_on_commit(
+        actor=actor,
+        category="ADMINISTRATION",
+        action="user.invitation_created",
+        resource=user,
+        status="success",
+        request=request,
     )
 
 
 @receiver(user_logout)
-def audit_logout(
-    sender,
-    user=None,
-    request=None,
-    **kwargs,
-):
+def audit_logout(sender, user=None, request=None, **kwargs):
     AuditService.record_on_commit(
         actor=user,
         category="AUTHENTICATION",
@@ -205,14 +237,7 @@ def audit_session_revoke(
 
 
 @receiver(user_deactivated)
-def audit_deactivation(
-    sender,
-    user,
-    actor=None,
-    reason=None,
-    request=None,
-    **kwargs,
-):
+def audit_deactivation(sender, user, actor=None, reason=None, request=None, **kwargs):
     AuditService.record_on_commit(
         actor=actor,
         category="ADMINISTRATION",
@@ -225,13 +250,7 @@ def audit_deactivation(
 
 
 @receiver(user_reactivated)
-def audit_reactivation(
-    sender,
-    user,
-    actor=None,
-    request=None,
-    **kwargs,
-):
+def audit_reactivation(sender, user, actor=None, request=None, **kwargs):
     AuditService.record_on_commit(
         actor=actor,
         category="ADMINISTRATION",
@@ -243,13 +262,7 @@ def audit_reactivation(
 
 
 @receiver(customer_created)
-def audit_customer_created(
-    sender,
-    customer,
-    actor=None,
-    request=None,
-    **kwargs,
-):
+def audit_customer_created(sender, customer, actor=None, request=None, **kwargs):
     AuditService.record_on_commit(
         actor=actor,
         category="BUSINESS",
@@ -261,13 +274,7 @@ def audit_customer_created(
 
 
 @receiver(customer_updated)
-def audit_customer_updated(
-    sender,
-    customer,
-    actor=None,
-    request=None,
-    **kwargs,
-):
+def audit_customer_updated(sender, customer, actor=None, request=None, **kwargs):
     AuditService.record_on_commit(
         actor=actor,
         category="BUSINESS",
@@ -279,13 +286,7 @@ def audit_customer_updated(
 
 
 @receiver(customer_activated)
-def audit_customer_activated(
-    sender,
-    customer,
-    actor=None,
-    request=None,
-    **kwargs,
-):
+def audit_customer_activated(sender, customer, actor=None, request=None, **kwargs):
     AuditService.record_on_commit(
         actor=actor,
         category="BUSINESS",
@@ -297,13 +298,7 @@ def audit_customer_activated(
 
 
 @receiver(customer_deactivated)
-def audit_customer_deactivated(
-    sender,
-    customer,
-    actor=None,
-    request=None,
-    **kwargs,
-):
+def audit_customer_deactivated(sender, customer, actor=None, request=None, **kwargs):
     AuditService.record_on_commit(
         actor=actor,
         category="BUSINESS",
@@ -315,12 +310,7 @@ def audit_customer_deactivated(
 
 
 @receiver(portfolio_created)
-def audit_portfolio_created(
-    sender,
-    portfolio,
-    actor=None,
-    **kwargs,
-):
+def audit_portfolio_created(sender, portfolio, actor=None, **kwargs):
     AuditService.record(
         actor=actor,
         category="BUSINESS",
@@ -370,9 +360,7 @@ def audit_portfolio_transferred(
         resource=portfolio,
         status="success",
         reason=reason or "",
-        metadata={
-            "to_commercial_id": getattr(to_commercial, "pk", None),
-        },
+        metadata={"to_commercial_id": getattr(to_commercial, "pk", None)},
     )
 
 
@@ -399,14 +387,7 @@ def audit_credit_sale_status_changed(
 
 
 @receiver(recovery_created)
-def audit_recovery_created(
-    sender,
-    recovery,
-    actor=None,
-    term=None,
-    debt=None,
-    **kwargs,
-):
+def audit_recovery_created(sender, recovery, actor=None, term=None, debt=None, **kwargs):
     AuditService.record(
         actor=actor,
         category="BUSINESS",
@@ -423,12 +404,7 @@ def audit_recovery_created(
 
 
 @receiver(debt_status_updated)
-def audit_debt_status_updated(
-    sender,
-    updated_debts=None,
-    overdue_count=0,
-    **kwargs,
-):
+def audit_debt_status_updated(sender, updated_debts=None, overdue_count=0, **kwargs):
     AuditService.record_on_commit(
         category="SYSTEM",
         action="debt.status_update",

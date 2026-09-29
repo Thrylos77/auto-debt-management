@@ -1,3 +1,13 @@
-from core.throttling.throttles import (IPRateThrottle, LoginRateThrottle, OTPRateThrottle, PasswordResetRateThrottle, TwoFARateThrottle)
+from core.throttling.throttles import (
+    IPRateThrottle,
+    LoginRateThrottle,
+    PasswordResetRateThrottle,
+    TwoFARateThrottle,
+)
 
-__all__ = ["IPRateThrottle", "LoginRateThrottle", "OTPRateThrottle", "PasswordResetRateThrottle", "TwoFARateThrottle"]
+__all__ = [
+    "IPRateThrottle",
+    "LoginRateThrottle",
+    "PasswordResetRateThrottle",
+    "TwoFARateThrottle",
+]

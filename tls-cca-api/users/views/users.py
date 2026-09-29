@@ -5,14 +5,15 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 
 from rbac.policies.permission_policy import AutoPermissionMixin
-from users.models import User
+from users.models import User, UserPreference
 from users.policies.user_policy import UserPolicy
-from users.serializers.users import (
+from users.serializers import (
     EmptyRequestSerializer,
     HistoricalUserSerializer,
     OwnProfileSerializer,
     RegisterSerializer,
     UserSerializer,
+    UserPreferenceSerializer,
 )
 from users.services import user_service
 
@@ -129,3 +130,12 @@ class AllUserHistoryListView(AutoPermissionMixin, generics.ListAPIView):
     serializer_class = HistoricalUserSerializer
     resource = "user_history"
     queryset = User.history.all().order_by("-history_date")
+
+
+class UserPreferenceView(generics.RetrieveUpdateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserPreferenceSerializer
+
+    def get_object(self):
+        preference, _ = UserPreference.objects.get_or_create(user=self.request.user)
+        return preference
