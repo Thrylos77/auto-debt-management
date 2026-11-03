@@ -19,7 +19,7 @@ Run-Step "Migration des apps platform" {
     poetry run python manage.py makemigrations audit configuration core rbac users notifications
 }
 Run-Step "Migration des apps metiers" { 
-    poetry run python manage.py makemigrations crm receivables reporting sales 
+    poetry run python manage.py makemigrations crm vehicles receivables reporting sales 
 }
 Run-Step "Application des migrations" { 
     poetry run python manage.py migrate 

@@ -28,6 +28,7 @@ APP_REGISTRIES = (
     "rbac.rbac_registry",
     "users.rbac_registry",
     "crm.rbac_registry",
+    "vehicles.rbac_registry",
     "sales.rbac_registry",
     "receivables.rbac_registry",
     "reporting.rbac_registry",

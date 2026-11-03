@@ -1,0 +1,1 @@
+"""Vehicles & Inventory domain application."""

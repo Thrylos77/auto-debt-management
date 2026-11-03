@@ -89,6 +89,7 @@ INSTALLED_APPS = [
     "notifications.apps.NotificationsConfig",
     "sales.apps.SalesConfig",
     "crm.apps.CrmConfig",
+    "vehicles.apps.VehiclesConfig",
     "receivables.apps.ReceivablesConfig",
     "reporting.apps.ReportingConfig",
 ]
